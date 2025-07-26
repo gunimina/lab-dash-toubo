@@ -22,62 +22,32 @@
     </script>
   </head>
 
-  <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen p-4">
-    <div class="bg-white dark:bg-gray-950 rounded-2xl shadow-lg h-[calc(100vh-2rem)] flex overflow-hidden">
-      <!-- 미니멀 사이드바 -->
-      <aside class="w-64 bg-white dark:bg-gray-800 flex-shrink-0 rounded-l-2xl">
-        <div class="flex flex-col h-full">
-          <!-- Logo -->
-          <div class="px-6 py-5">
-            <div class="flex items-center space-x-3">
-              <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow">
-                <span class="text-white text-lg font-bold">✦</span>
-              </div>
-              <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Lab Webhook</h1>
-            </div>
-          </div>
-          
-          <!-- Navigation -->
-          <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-            <%= link_to admin_initial_crawling_index_path, class: "flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors #{request.path.include?('/admin/initial_crawling') && !request.path.include?('/sync') ? 'bg-gray-100 dark:bg-gray-800 shadow-sm text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}" do %>
-              <%= lucide_icon("cloud-download", class: "w-5 h-5" ) %>
-              <span>초기 크롤링 (실시간)</span>
-            <% end %>
-            
-            <%= link_to admin_sync_crawling_index_path, class: "flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors #{request.path.include?('/admin/sync_crawling') ? 'bg-gray-100 dark:bg-gray-800 shadow-sm text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}" do %>
-              <%= lucide_icon("clock", class: "w-5 h-5" ) %>
-              <span>동기 크롤링</span>
-            <% end %>
-          </nav>
-          
-          <!-- Bottom Section -->
-          <div class="px-3 py-4 mt-auto">
-            <!-- Theme Toggle -->
-            <button 
-              onclick="toggleTheme()" 
-              class="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <span class="dark:hidden"><%= lucide_icon("sun", class: "w-5 h-5" ) %></span>
-              <span class="hidden dark:block"><%= lucide_icon("moon", class: "w-5 h-5" ) %></span>
-              <span>테마 변경</span>
-            </button>
-          </div>
-        </div>
-      </aside>
+  <body class="bg-slate-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen p-4">
+    <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-slate-200 dark:border-gray-800 h-[calc(100vh-2rem)] flex overflow-hidden" data-controller="sidebar">
+      <!-- 사이드바 컴포넌트 -->
+      <%= render SidebarComponent.new(current_path: request.path) %>
       
       <!-- Main Content -->
       <main class="flex-1 flex flex-col overflow-hidden rounded-r-2xl">
         <!-- Header -->
-        <header class="px-6 py-4 bg-gray-50 dark:bg-black">
-          <%= section_header(
-            content_for(:page_title) || "초기 크롤링",
-            subtitle: Date.current.strftime("%Y년 %m월 %d일"),
-            actions: render('shared/server_status', connected: @server_connected)
-          ) %>
+        <header class="px-6 py-4 flex items-center bg-[#f5f5f7] dark:bg-gray-900">
+          <!-- 햄버거 메뉴 버튼 -->
+          <button data-action="click->sidebar#toggle" 
+                  class="mr-4 p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-lg transition-colors">
+            <%= lucide_icon("menu", class: "w-6 h-6 text-gray-700 dark:text-gray-300") %>
+          </button>
+          
+          <div class="flex-1">
+            <%= section_header(
+              content_for(:page_title) || "초기 크롤링",
+              subtitle: Date.current.strftime("%Y년 %m월 %d일"),
+              actions: render('shared/server_status', connected: @server_connected)
+            ) %>
+          </div>
         </header>
         
         <!-- Page Content -->
-        <div class="flex-1 overflow-hidden bg-gray-50 dark:bg-black">
+        <div class="flex-1 overflow-hidden bg-[#f5f5f7] dark:bg-gray-900">
           <div class="h-full overflow-y-auto scroll-smooth p-6">
             <% if flash[:notice] %>
               <%= alert_box(flash[:notice], type: :info) %>
@@ -108,12 +78,6 @@
           document.cookie = 'theme=dark;path=/;max-age=31536000';
         }
       }
-      
-      // 서버 상태 확인 (페이지 로드 시)
-      document.addEventListener('DOMContentLoaded', async function() {
-        // 서버 상태는 Rails 컨트롤러에서 확인하므로 제거
-        // CORS 문제 방지
-      });
     </script>
   </body>
 </html>

@@ -63,3 +63,5 @@ end
 
 gem "view_component", "~> 3.23"
 gem "lucide-rails"
+
+gem "kaminari", "~> 1.2"

@@ -120,7 +120,16 @@ lab-dash-turbo/
   - Turbo Streams 실시간 업데이트
   - Ajax Polling으로 진행상황 추적
 
-### 2. 대시보드 (추후 구현)
+### 2. 자료관리
+- **경로**: `/admin/data_management/products`
+- **특징**:
+  - 상품 목록 테이블 뷰
+  - 실시간 검색 (상품명, 카탈로그 번호, Cat.No)
+  - 부모 상품만 표시
+  - 하위 상품 개수 표시
+  - Kaminari 페이지네이션
+
+### 3. 대시보드 (추후 구현)
 - 일일 크롤링 결과
 - 가격 변동 모니터링
 - 재고 현황
@@ -388,6 +397,23 @@ Turbo::StreamsChannel.broadcast_replace_to(
   - sync_crawling 페이지의 RemixIcon 제거 및 ERB 문법 오류 수정
     - onclick 속성의 중첩 ERB 태그를 `data-disable-with`로 변경
   - _alert.html.erb의 아이콘 수정 (alert_icon 헬퍼 활용)
+
+### 2025-07-27 (저녁)
+- **자료관리 섹션 추가**
+  - 사이드바에 "자료관리" 메뉴 추가
+  - 하위 메뉴로 "상품목록" 및 "DB 동기화" 추가
+  - Products 모델 및 컨트롤러 생성
+  - 상품 테이블 뷰 구현:
+    - 이미지, 뉴카탈로그넘버, 국문상품명, 상세설명, 단위, 가격, 재고 표시
+    - 실시간 검색 기능 (상품명, 카탈로그번호, Cat.No)
+    - 부모 상품만 표시 (parent_product_id: nil)
+    - Kaminari gem으로 페이지네이션
+  - Stimulus search_controller로 디바운스 검색 구현
+  - **크롤러 DB 동기화 기능**
+    - Node.js 크롤러의 SQLite DB (lab-shop.db)에서 데이터 가져오기
+    - ProductSyncService로 parents/children 테이블 동기화
+    - 부모-자식 상품 관계 유지
+    - 가격, 재고 정보 자동 파싱
 
 ### 2025-07-26 (오후)
 - **Lucide Rails 아이콘 라이브러리 도입**

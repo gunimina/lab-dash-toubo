@@ -29,6 +29,16 @@ Rails.application.routes.draw do
       post 'reset', to: 'sync_crawling#reset', as: :reset_sync_crawling
       get 'refresh', to: 'sync_crawling#refresh', as: :refresh_sync_crawling
     end
+    
+    # 자료관리 라우트
+    namespace :data_management do
+      resources :products do
+        collection do
+          get 'search'
+          post 'sync'
+        end
+      end
+    end
   end
 
   # Root redirect to admin

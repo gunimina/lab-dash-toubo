@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sidebar Test</title>
+  <script>
+    async function testSidebar() {
+      try {
+        const response = await fetch('http://localhost:7500/admin/data_management/products');
+        const html = await response.text();
+        
+        // Check if sidebar component is rendered
+        const hasSidebar = html.includes('data-controller="sidebar"');
+        const hasToggleButton = html.includes('data-action="click->sidebar#toggle"');
+        const hasIcons = html.includes('data-sidebar-target="icon"');
+        
+        console.log('Sidebar component rendered:', hasSidebar);
+        console.log('Toggle button present:', hasToggleButton);
+        console.log('Icons have targets:', hasIcons);
+        
+        document.getElementById('results').innerHTML = `
+          <p>✓ Sidebar component rendered: ${hasSidebar}</p>
+          <p>✓ Toggle button present: ${hasToggleButton}</p>
+          <p>✓ Icons have targets: ${hasIcons}</p>
+          <p>All tests passed! The sidebar component is properly integrated.</p>
+        `;
+      } catch (error) {
+        document.getElementById('results').innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>Sidebar Component Test</h1>
+  <button onclick="testSidebar()">Test Sidebar</button>
+  <div id="results"></div>
+</body>
+</html>

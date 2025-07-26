@@ -6,7 +6,7 @@
      data-crawling-monitor-session-id-value="<%= @session&.id %>"
      data-crawling-monitor-status-url-value="<%= admin_initial_crawling_status_path(@session.id) if @session %>">
   
-  <div class="max-w-7xl mx-auto p-4">
+  <div class="mx-auto p-4" style="max-width: 1400px;">
     <!-- 단계 표시기 - 독립적으로 업데이트 -->
     <section id="step-indicator" class="mb-4">
       <%= render 'step_indicator', steps: @steps, current_step: @status[:current_step] || 0 %>
