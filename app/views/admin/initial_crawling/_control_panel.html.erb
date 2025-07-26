@@ -1,0 +1,109 @@
+<div class="space-y-4">
+  <div class="flex items-center justify-between mb-6">
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+      크롤링 제어
+    </h3>
+  </div>
+  
+  <!-- 크롤러 상태 표시 -->
+  <div class="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-700/30 rounded-lg p-4 mb-6 border border-gray-200 dark:border-gray-600">
+    <div class="flex items-center justify-between">
+      <span class="text-sm font-medium text-gray-600 dark:text-gray-400">크롤러 상태</span>
+      <% status_text = case status&.to_s
+         when 'idle', nil then '대기 중'
+         when 'running' then '실행 중'
+         when 'paused' then '일시정지'
+         when 'completed' then '완료'
+         when 'stopped' then '중지됨'
+         when 'disconnected' then '연결 끊김'
+         else status
+         end
+         status_color = case status&.to_s
+         when 'idle', nil then 'text-gray-600'
+         when 'running' then 'text-green-600'
+         when 'paused' then 'text-yellow-600'
+         when 'completed' then 'text-blue-600'
+         when 'stopped' then 'text-red-600'
+         when 'disconnected' then 'text-red-600'
+         else 'text-gray-600'
+         end
+      %>
+      <div class="flex items-center space-x-2">
+        <span class="relative flex h-3 w-3">
+          <% if status&.to_s == 'running' %>
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <% end %>
+          <span class="relative inline-flex rounded-full h-3 w-3 <%= status&.to_s == 'running' ? 'bg-green-500' : status&.to_s == 'paused' ? 'bg-yellow-500' : status&.to_s == 'stopped' ? 'bg-red-500' : 'bg-gray-400' %>"></span>
+        </span>
+        <span class="<%= status_color %> font-semibold text-base"><%= status_text %></span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 제어 버튼 -->
+  <div class="flex flex-wrap gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+    <% case status&.to_s %>
+    <% when 'idle', 'completed', 'stopped', nil %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "초기 크롤링 시작",
+        action: :start,
+        icon: "cloud-download",
+        variant: :primary
+      ) %>
+    <% when 'running' %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "일시정지",
+        action: :pause,
+        icon: "pause",
+        variant: :warning
+      ) %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "중지",
+        action: :stop,
+        icon: "square",
+        variant: :danger
+      ) %>
+    <% when 'paused' %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "재개",
+        action: :resume,
+        icon: "play",
+        variant: :primary
+      ) %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "중지",
+        action: :stop,
+        icon: "square",
+        variant: :danger
+      ) %>
+    <% when 'disconnected' %>
+      <div class="text-red-600 dark:text-red-400">
+        <%= lucide_icon("alert-triangle", class: "w-5 h-5 mr-2 inline") %>
+        크롤러 서버에 연결할 수 없습니다
+      </div>
+    <% end %>
+    
+    <% reset_disabled = ['running', 'paused'].include?(status&.to_s) %>
+    <% Rails.logger.info "[ControlPanel] Reset button - status: #{status}, disabled: #{reset_disabled}" %>
+    <%= render Crawling::ControlButtonComponent.new(
+      text: "초기화",
+      action: :reset,
+      icon: "rotate-cw",
+      variant: :secondary,
+      disabled: reset_disabled
+    ) %>
+  </div>
+  
+  <!-- 안내 메시지 -->
+  <div class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <div class="flex items-start space-x-3">
+      <%= lucide_icon("info", class: "w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5") %>
+      <div>
+        <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">초기 크롤링 안내</h4>
+        <p class="text-sm text-blue-700 dark:text-blue-300">
+          전체 제품 데이터를 수집하는 작업으로, 완료까지 약 4-5시간이 소요됩니다.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

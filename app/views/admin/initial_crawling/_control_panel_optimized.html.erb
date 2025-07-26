@@ -1,0 +1,29 @@
+<!-- Turbo 최적화 구조 -->
+<div class="space-y-4">
+  <!-- 1. 상태는 별도 ID로 분리 -->
+  <div id="crawler-status-display" class="flex items-center justify-between mb-6">
+    <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+      <i class="ri-settings-3-line mr-2 text-gray-500"></i>
+      크롤링 제어
+    </h3>
+    <%= render partial: 'crawler_status_badge', locals: { status: status } %>
+  </div>
+  
+  <!-- 2. 버튼 영역만 별도 ID로 교체 가능하게 -->
+  <div id="control-buttons" class="flex flex-wrap gap-3 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
+    <%= render partial: 'control_buttons', locals: { status: status } %>
+  </div>
+  
+  <!-- 3. 정적인 부분은 ID 없이 -->
+  <div class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+    <div class="flex items-start space-x-3">
+      <i class="ri-information-line text-blue-600 dark:text-blue-400 text-lg mt-0.5"></i>
+      <div>
+        <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">초기 크롤링 안내</h4>
+        <p class="text-sm text-blue-700 dark:text-blue-300">
+          전체 제품 데이터를 수집하는 작업으로, 완료까지 약 4-5시간이 소요됩니다.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

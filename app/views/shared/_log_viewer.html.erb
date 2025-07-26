@@ -1,0 +1,45 @@
+<%# 
+  로컬 변수:
+  - logs: 로그 메시지 배열
+  - max_height: 최대 높이 (기본값: h-96)
+  - auto_scroll: 자동 스크롤 여부 (기본값: true)
+%>
+<% max_height ||= 'h-96' %>
+<% auto_scroll = true if auto_scroll.nil? %>
+
+<%= card_container(size: :sm) do %>
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+      실시간 로그
+    </h3>
+    <div class="flex items-center space-x-2">
+      <span class="text-sm text-gray-500 dark:text-gray-400">
+        <%= logs.size %> 메시지
+      </span>
+      <button 
+        onclick="clearLogs()" 
+        class="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+        <i class="ri-delete-bin-line"></i>
+      </button>
+    </div>
+  </div>
+  
+  <div 
+    id="log-container" 
+    class="<%= max_height %> overflow-y-auto bg-gray-900 dark:bg-black rounded-lg p-4 font-mono text-sm"
+    <%= 'data-auto-scroll="true"' if auto_scroll %>>
+    <% if logs.empty? %>
+      <div class="text-gray-500 text-center py-8">
+        로그가 없습니다. 크롤링을 시작하면 여기에 표시됩니다.
+      </div>
+    <% else %>
+      <% logs.each do |log| %>
+        <div class="log-entry <%= log_entry_class(log[:type]) %> mb-1">
+          <span class="text-gray-500">[<%= log[:timestamp] %>]</span>
+          <span class="<%= log_text_class(log[:type]) %>"><%= log[:message] %></span>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>
+

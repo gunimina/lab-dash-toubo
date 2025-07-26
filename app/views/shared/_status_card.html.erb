@@ -1,0 +1,18 @@
+<%# 
+  로컬 변수:
+  - title: 카드 제목
+  - value: 표시할 값
+  - icon: Remix 아이콘 클래스
+  - id: DOM ID (optional)
+%>
+<%= card_container(size: :md, shadow: :DEFAULT) do %>
+  <div class="flex items-center justify-between mb-2">
+    <p class="text-sm text-gray-500 dark:text-gray-400"><%= title %></p>
+    <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+      <i class="<%= icon %> text-gray-600 dark:text-gray-400"></i>
+    </div>
+  </div>
+  <h3 <%= "id=\"#{id}\"" if id %> class="text-2xl font-bold text-gray-900 dark:text-white">
+    <%= value %>
+  </h3>
+<% end %>

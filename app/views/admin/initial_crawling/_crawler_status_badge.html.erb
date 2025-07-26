@@ -1,0 +1,28 @@
+<div class="flex items-center space-x-2" data-crawling-status="<%= status %>">
+  <% status_text = case status&.to_s
+     when 'idle', nil then '대기 중'
+     when 'running' then '실행 중'
+     when 'paused' then '일시정지'
+     when 'completed' then '완료'
+     when 'stopped' then '중지됨'
+     when 'disconnected' then '연결 끊김'
+     else status
+     end
+     status_color = case status&.to_s
+     when 'idle', nil then 'text-gray-600'
+     when 'running' then 'text-green-600'
+     when 'paused' then 'text-yellow-600'
+     when 'completed' then 'text-blue-600'
+     when 'stopped' then 'text-red-600'
+     when 'disconnected' then 'text-red-600'
+     else 'text-gray-600'
+     end
+  %>
+  <span class="relative flex h-3 w-3">
+    <% if status&.to_s == 'running' %>
+      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+    <% end %>
+    <span class="relative inline-flex rounded-full h-3 w-3 <%= status&.to_s == 'running' ? 'bg-green-500' : status&.to_s == 'paused' ? 'bg-yellow-500' : status&.to_s == 'stopped' ? 'bg-red-500' : 'bg-gray-400' %>"></span>
+  </span>
+  <span class="<%= status_color %> font-semibold text-base"><%= status_text %></span>
+</div>

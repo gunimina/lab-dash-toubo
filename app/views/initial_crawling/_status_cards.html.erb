@@ -1,0 +1,76 @@
+<%# 
+  로컬 변수:
+  - crawler_status: 현재 크롤러 상태
+  - current_step: 현재 단계 정보
+  - overall_progress: 전체 진행률
+  - estimated_time: 예상 완료 시간
+%>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  <!-- 크롤러 상태 -->
+  <div class="<%= card_classes(size: :md) %>">
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-sm text-gray-500 dark:text-gray-400">크롤러 상태</p>
+      <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+        <i class="ri-robot-line text-gray-600 dark:text-gray-400"></i>
+      </div>
+    </div>
+    <h3 id="crawler-status" class="text-2xl font-bold text-gray-900 dark:text-white">
+      <%= crawler_status || '대기 중' %>
+    </h3>
+  </div>
+  
+  <!-- 현재 단계 -->
+  <div class="<%= card_classes(size: :md) %>">
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-sm text-gray-500 dark:text-gray-400">현재 단계</p>
+      <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+        <i class="ri-loader-4-line text-gray-600 dark:text-gray-400"></i>
+      </div>
+    </div>
+    <h3 id="current-step" class="text-xl font-bold text-gray-900 dark:text-white mb-2">
+      <%= current_step&.dig(:name) || '-' %>
+    </h3>
+    <div class="mt-2">
+      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+        <div id="current-step-progress" 
+             class="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+             style="width: <%= current_step&.dig(:progress) || 0 %>%"></div>
+      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <span id="current-step-percent"><%= current_step&.dig(:progress) || 0 %></span>%
+      </p>
+    </div>
+  </div>
+  
+  <!-- 전체 진행률 -->
+  <div class="<%= card_classes(size: :md) %>">
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-sm text-gray-500 dark:text-gray-400">전체 진행률</p>
+      <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+        <i class="ri-percent-line text-gray-600 dark:text-gray-400"></i>
+      </div>
+    </div>
+    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+      <span id="overall-progress"><%= overall_progress || 0 %></span>%
+    </h3>
+    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+      <div id="overall-progress-bar" 
+           class="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-300 ease-out" 
+           data-progress="<%= overall_progress || 0 %>"></div>
+    </div>
+  </div>
+  
+  <!-- 예상 완료 시간 -->
+  <div class="<%= card_classes(size: :md) %>">
+    <div class="flex items-center justify-between mb-2">
+      <p class="text-sm text-gray-500 dark:text-gray-400">예상 완료 시간</p>
+      <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+        <i class="ri-time-line text-gray-600 dark:text-gray-400"></i>
+      </div>
+    </div>
+    <h3 id="estimated-time" class="text-2xl font-bold text-gray-900 dark:text-white">
+      <%= estimated_time || '-' %>
+    </h3>
+  </div>
+</div>
+

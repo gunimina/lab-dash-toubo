@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  step_number: 1
+  step_name: MyString
+  status: MyString
+  current_progress: 1
+  message: MyText
+  started_at: 2025-07-25 15:40:18
+  completed_at: 2025-07-25 15:40:18
+
+two:
+  step_number: 1
+  step_name: MyString
+  status: MyString
+  current_progress: 1
+  message: MyText
+  started_at: 2025-07-25 15:40:18
+  completed_at: 2025-07-25 15:40:18

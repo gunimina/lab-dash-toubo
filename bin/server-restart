@@ -1,0 +1,28 @@
+#!/bin/bash
+
+echo "🔄 Rails 서버 재시작 스크립트"
+
+# 기존 프로세스 종료
+echo "1️⃣ 기존 Rails/Puma 프로세스 종료..."
+pkill -f "puma.*lab-dash-webhook" 2>/dev/null
+pkill -f "rails server" 2>/dev/null
+
+# PID 파일 정리
+echo "2️⃣ PID 파일 정리..."
+rm -f tmp/pids/server.pid
+
+# 포트 확인
+echo "3️⃣ 포트 7500 확인..."
+if lsof -i :7500 > /dev/null 2>&1; then
+    echo "⚠️  포트 7500이 사용 중입니다. 프로세스를 종료합니다."
+    kill -9 $(lsof -t -i:7500) 2>/dev/null
+fi
+
+# 잠시 대기
+sleep 1
+
+# 서버 시작
+echo "4️⃣ Rails 서버 시작 (포트 7500)..."
+bin/rails server
+
+echo "✅ 완료!"

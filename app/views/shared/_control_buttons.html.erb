@@ -1,0 +1,61 @@
+<%# 
+  로컬 변수:
+  - status: 현재 상태 (idle, running, paused, completed 등)
+  - show_reset: 초기화 버튼 표시 여부 (기본값: true)
+  - button_size: 버튼 크기 (기본값: :md)
+%>
+<% button_size ||= :md %>
+<% show_reset = true if show_reset.nil? %>
+
+<div class="flex flex-wrap gap-3">
+  <% case status %>
+  <% when 'idle', 'stopped', 'completed', 'error' %>
+    <button 
+      onclick="startCrawling()" 
+      class="<%= button_classes(:primary, button_size) %>"
+      id="start-btn">
+      <i class="ri-play-circle-line mr-2"></i>
+      크롤링 시작
+    </button>
+  <% when 'running' %>
+    <button 
+      onclick="pauseCrawling()" 
+      class="<%= button_classes(:warning, button_size) %>"
+      id="pause-btn">
+      <i class="ri-pause-circle-line mr-2"></i>
+      일시정지
+    </button>
+    <button 
+      onclick="stopCrawling()" 
+      class="<%= button_classes(:danger, button_size) %>"
+      id="stop-btn">
+      <i class="ri-stop-circle-line mr-2"></i>
+      중지
+    </button>
+  <% when 'paused' %>
+    <button 
+      onclick="resumeCrawling()" 
+      class="<%= button_classes(:primary, button_size) %>"
+      id="resume-btn">
+      <i class="ri-play-circle-line mr-2"></i>
+      재개
+    </button>
+    <button 
+      onclick="stopCrawling()" 
+      class="<%= button_classes(:danger, button_size) %>"
+      id="stop-btn">
+      <i class="ri-stop-circle-line mr-2"></i>
+      중지
+    </button>
+  <% end %>
+  
+  <% if show_reset && ['completed', 'error', 'stopped'].include?(status) %>
+    <button 
+      onclick="resetCrawling()" 
+      class="<%= button_classes(:secondary, button_size) %>"
+      id="reset-btn">
+      <i class="ri-refresh-line mr-2"></i>
+      초기화
+    </button>
+  <% end %>
+</div>

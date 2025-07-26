@@ -1,0 +1,4 @@
+<%= render Crawling::StepIndicatorComponent.new(
+  steps: steps,
+  current_step: defined?(current_step) ? current_step : 0
+) %>

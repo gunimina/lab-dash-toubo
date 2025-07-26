@@ -1,0 +1,25 @@
+<%# 
+  로컬 변수:
+  - connected: 서버 연결 상태 (true/false)
+  - server_info: 서버 정보 해시 (optional)
+%>
+<% server_info ||= {} %>
+<div class="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-xl">
+  <% if connected %>
+    <%= lucide_icon("wifi", class: "w-4 h-4 text-green-500" ) %>
+    <span class="text-sm font-medium text-green-600 dark:text-green-400">연결됨</span>
+    <% if server_info.present? %>
+      <span class="text-xs text-gray-500 dark:text-gray-400">
+        (<%= server_info[:url] || 'localhost:3334' %>)
+      </span>
+    <% end %>
+  <% else %>
+    <%= lucide_icon("x", class: "w-4 h-4 text-red-500" ) %>
+    <span class="text-sm font-medium text-red-600 dark:text-red-400">연결 끊김</span>
+    <button 
+      onclick="checkServerConnection()" 
+      class="ml-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+      재연결
+    </button>
+  <% end %>
+</div>

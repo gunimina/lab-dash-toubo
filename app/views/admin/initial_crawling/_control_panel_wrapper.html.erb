@@ -1,0 +1,6 @@
+<div id="control-panel-wrapper" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6" data-crawling-status="<%= status %>">
+  <div id="control-panel">
+    <%= render partial: 'control_panel', 
+               locals: { session: session, status: status } %>
+  </div>
+</div>

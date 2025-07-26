@@ -1,0 +1,68 @@
+<%# 
+  로컬 변수:
+  - id: 모달 ID
+  - title: 모달 제목
+  - subtitle: 부제목 (optional)
+  - variant: 색상 변형 (:default, :danger, :warning)
+  - &block: 모달 내용
+%>
+<% variant ||= :default %>
+<% header_classes = case variant
+when :danger
+  "bg-gradient-to-r from-red-600 to-red-700 text-white"
+when :warning
+  "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white"
+else
+  "bg-gradient-to-r from-gray-700 to-gray-800 text-white"
+end %>
+
+<div id="<%= id %>" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 h-full w-full z-50">
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-5xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+      <!-- 헤더 -->
+      <div class="<%= header_classes %> p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-3xl font-bold flex items-center gap-3">
+              <% if variant == :danger %>
+                <i class="ri-alert-line text-4xl animate-pulse"></i>
+              <% elsif variant == :warning %>
+                <i class="ri-alert-line text-4xl"></i>
+              <% else %>
+                <i class="ri-information-line text-4xl"></i>
+              <% end %>
+              <%= title %>
+            </h3>
+            <% if subtitle %>
+              <p class="mt-2 text-lg <%= variant == :danger ? 'text-red-100' : 'text-gray-100' %>">
+                <%= subtitle %>
+              </p>
+            <% end %>
+          </div>
+          <button onclick="modal.close()" class="text-gray-200 hover:text-white transition-colors p-2">
+            <i class="ri-close-line text-3xl"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- 콘텐츠 -->
+      <div class="p-8">
+        <%= yield %>
+      </div>
+      
+      <!-- 하단 버튼 -->
+      <div class="bg-gray-100 dark:bg-gray-700 px-8 py-6 flex justify-end gap-4">
+        <button onclick="modal.close()" class="<%= button_classes(:secondary) %>">
+          <i class="ri-arrow-left-line"></i>
+          취소
+        </button>
+        <% if variant == :danger %>
+          <button onclick="modal.confirmReset()" class="<%= button_classes(:danger) %>">
+            <i class="ri-delete-bin-line"></i>
+            초기화 진행
+          </button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

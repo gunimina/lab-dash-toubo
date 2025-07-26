@@ -1,0 +1,147 @@
+<% content_for :page_title, "동기 크롤링" %>
+
+<div class="space-y-6">
+  <!-- 설명 카드 -->
+  <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
+    <div class="flex items-start space-x-3">
+      <%= lucide_icon("info", class: "w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" ) %>
+      <div>
+        <h3 class="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">동기 크롤링 방식</h3>
+        <p class="text-blue-700 dark:text-blue-300">
+          버튼을 클릭하면 서버에서 작업을 처리한 후 페이지가 새로고침됩니다.<br>
+          실시간 업데이트는 제공되지 않으며, 상태 확인을 위해서는 수동으로 새로고침해야 합니다.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 현재 상태 카드 -->
+  <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+    <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">크롤러 상태</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <!-- 상태 -->
+      <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">현재 상태</p>
+        <p class="text-lg font-semibold <%= status_color_class(@status[:status]) %>">
+          <%= status_text(@status[:status]) %>
+        </p>
+      </div>
+      
+      <!-- 마지막 세션 -->
+      <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">마지막 세션</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">
+          <% if @session %>
+            <%= @session.created_at.strftime("%Y-%m-%d %H:%M") %>
+          <% else %>
+            없음
+          <% end %>
+        </p>
+      </div>
+      
+      <!-- 소요 시간 -->
+      <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-1">소요 시간</p>
+        <p class="text-lg font-semibold text-gray-900 dark:text-white">
+          <% if @session && @session.started_at %>
+            <% if @session.ended_at %>
+              <%= distance_of_time_in_words(@session.started_at, @session.ended_at) %>
+            <% else %>
+              <%= distance_of_time_in_words(@session.started_at, Time.current) %>
+            <% end %>
+          <% else %>
+            -
+          <% end %>
+        </p>
+      </div>
+    </div>
+
+    <!-- 제어 버튼들 -->
+    <div class="flex flex-wrap gap-3">
+      <% if @status[:status] == 'idle' || @status[:status] == 'stopped' %>
+        <%= form_with url: admin_start_sync_crawling_path, method: :post, local: true do |f| %>
+          <%= f.button type: :submit, 
+                       class: "inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200",
+                       data: { disable_with: "처리 중..." } do %>
+            <%= lucide_icon("play", class: "w-5 h-5 mr-2 inline" ) %>
+            크롤링 시작
+          <% end %>
+        <% end %>
+        
+        <%= form_with url: admin_reset_sync_crawling_path, method: :post, local: true do |f| %>
+          <%= f.button type: :submit,
+                       class: "inline-flex items-center px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white font-medium rounded-lg transition-colors duration-200",
+                       onclick: "return confirm('정말 초기화하시겠습니까?')" do %>
+            <%= lucide_icon("rotate-cw", class: "w-5 h-5 mr-2 inline" ) %>
+            초기화
+          <% end %>
+        <% end %>
+      <% else %>
+        <%= form_with url: admin_stop_sync_crawling_path, method: :post, local: true do |f| %>
+          <%= f.button type: :submit,
+                       class: "inline-flex items-center px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors duration-200",
+                       data: { disable_with: "중지 중..." } do %>
+            <%= lucide_icon("square", class: "w-5 h-5 mr-2 inline" ) %>
+            크롤링 중지
+          <% end %>
+        <% end %>
+      <% end %>
+      
+      <!-- 새로고침 버튼 -->
+      <%= link_to admin_refresh_sync_crawling_path, 
+                  class: "inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-colors duration-200" do %>
+        <%= lucide_icon("rotate-cw", class: "w-5 h-5 mr-2 inline") %>
+        새로고침
+      <% end %>
+    </div>
+  </div>
+
+  <!-- 진행 상황 (있을 경우) -->
+  <% if @session && @status[:status] != 'idle' %>
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">진행 상황</h2>
+      
+      <% progress_data = CrawlingProgress.where(crawling_session: @session).order(:step_number) %>
+      <% if progress_data.any? %>
+        <div class="space-y-3">
+          <% crawling_steps.each do |number, step_info| %>
+            <% progress = progress_data.find { |p| p.step_number == number } %>
+            <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div class="flex items-center space-x-3">
+                <% if progress && progress.status == 'completed' %>
+                  <%= lucide_icon("check-circle", class: "w-5 h-5 text-green-500" ) %>
+                <% elsif progress && progress.status == 'running' %>
+                  <%= lucide_icon("rotate-cw", class: "w-5 h-5 text-blue-500 animate-spin" ) %>
+                <% else %>
+                  <%= lucide_icon("more-horizontal", class: "w-5 h-5 text-gray-400" ) %>
+                <% end %>
+                <span class="font-medium text-gray-900 dark:text-white">
+                  <%= step_info[:name] %>
+                </span>
+              </div>
+              <span class="text-sm text-gray-600 dark:text-gray-400">
+                <%= progress ? "#{progress.current_progress}%" : "0%" %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p class="text-gray-600 dark:text-gray-400">진행 상황 정보가 없습니다.</p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <!-- 자동 새로고침 안내 -->
+  <% if @status[:status] == 'running' %>
+    <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4">
+      <div class="flex items-center space-x-3">
+        <%= lucide_icon("clock", class: "w-5 h-5 text-yellow-600 dark:text-yellow-400" ) %>
+        <p class="text-yellow-800 dark:text-yellow-200">
+          크롤링이 진행 중입니다. 진행 상황을 확인하려면 새로고침 버튼을 클릭하세요.
+        </p>
+      </div>
+    </div>
+  <% end %>
+</div>
+

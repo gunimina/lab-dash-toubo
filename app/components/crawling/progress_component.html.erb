@@ -1,0 +1,35 @@
+<div class="<%= container_classes %>" id="progress-section">
+  <div class="mb-4">
+    <div class="flex justify-between items-center mb-2">
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">현재 단계</span>
+      <span class="text-sm text-gray-500 dark:text-gray-400">
+        <span id="current-progress-percent"><%= progress %></span>%
+      </span>
+    </div>
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3" id="current-step-text">
+      <%= step_text %>
+    </h3>
+    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+      <div id="current-progress-bar" 
+           class="<%= progress_bar_classes %>" 
+           style="width: <%= progress %>%">
+      </div>
+    </div>
+  </div>
+  
+  <!-- 전체 진행률 -->
+  <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+    <div class="flex justify-between items-center mb-2">
+      <span class="text-sm font-medium text-gray-700 dark:text-gray-300">전체 진행률</span>
+      <span class="text-sm text-gray-500 dark:text-gray-400">
+        <span id="overall-progress"><%= (current_step - 1) * 25 + (progress * 0.25).to_i %></span>%
+      </span>
+    </div>
+    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+      <div id="overall-progress-bar" 
+           class="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-500" 
+           style="width: <%= (current_step - 1) * 25 + (progress * 0.25).to_i %>%">
+      </div>
+    </div>
+  </div>
+</div>

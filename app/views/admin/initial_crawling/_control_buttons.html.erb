@@ -1,0 +1,60 @@
+<div class="flex flex-col gap-3">
+  <div class="flex items-center gap-3">
+    <% case status&.to_s %>
+    <% when 'idle', 'completed', 'stopped', nil %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "초기 크롤링 시작",
+        action: :start,
+        icon: "cloud-download",
+        variant: :primary
+      ) %>
+      
+      <% reset_disabled = false %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "초기화",
+        action: :reset,
+        icon: "rotate-cw",
+        variant: :secondary,
+        disabled: reset_disabled
+      ) %>
+      
+      <% if @last_completed_session && (status == 'idle' || status == 'completed') %>
+        <div class="flex items-center text-sm text-green-600 dark:text-green-400">
+          <%= lucide_icon("check-circle", class: "w-4 h-4 mr-1" ) %>
+          <span>크롤링이 완료되었습니다. (다시 크롤링 하려면 초기화 후 진행하세요)</span>
+        </div>
+      <% end %>
+    <% when 'running' %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "일시정지",
+        action: :pause,
+        icon: "pause",
+        variant: :warning
+      ) %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "중지",
+        action: :stop,
+        icon: "square",
+        variant: :danger
+      ) %>
+    <% when 'paused' %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "재개",
+        action: :resume,
+        icon: "play",
+        variant: :primary
+      ) %>
+      <%= render Crawling::ControlButtonComponent.new(
+        text: "중지",
+        action: :stop,
+        icon: "square",
+        variant: :danger
+      ) %>
+    <% when 'disconnected' %>
+      <div class="text-red-600 dark:text-red-400 flex items-center">
+        <%= lucide_icon("alert-triangle", class: "w-5 h-5 mr-2" ) %>
+        크롤러 서버에 연결할 수 없습니다
+      </div>
+    <% end %>
+  </div>
+</div>

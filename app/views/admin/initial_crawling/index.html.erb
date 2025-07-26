@@ -1,0 +1,123 @@
+<%# Turbo Streams에 최적화된 구조 %>
+<% content_for :page_title, "초기 크롤링" %>
+
+<div class="container mx-auto" 
+     data-controller="crawling-monitor" 
+     data-crawling-monitor-session-id-value="<%= @session&.id %>"
+     data-crawling-monitor-status-url-value="<%= admin_initial_crawling_status_path(@session.id) if @session %>">
+  
+  <div class="max-w-7xl mx-auto p-4">
+    <!-- 단계 표시기 - 독립적으로 업데이트 -->
+    <section id="step-indicator" class="mb-4">
+      <%= render 'step_indicator', steps: @steps, current_step: @status[:current_step] || 0 %>
+    </section>
+
+    <!-- 제어 패널 - 세분화된 구조 -->
+    <article class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4">
+      <!-- 상태 표시 영역 -->
+      <section id="status-section" data-crawling-status="<%= @status[:status] %>">
+        <%= render 'status_section', status: @status[:status] %>
+      </section>
+      
+      <!-- 버튼 영역 -->
+      <section id="control-buttons" class="mt-4">
+        <%= render 'control_buttons', status: @status[:status] %>
+      </section>
+      
+      <!-- 안내 메시지 - 변경되지 않으므로 ID 없음 -->
+      <footer class="mt-4">
+        <%= render 'crawling_info' %>
+      </footer>
+    </article>
+  
+  <!-- 로그 영역 (선택사항) -->
+  <div id="log-section" class="mt-6 hidden">
+    <div class="bg-gray-900 dark:bg-black rounded-xl shadow-sm p-4">
+      <h3 class="text-white font-semibold mb-3">실시간 로그</h3>
+      <div id="log-messages" class="space-y-1 font-mono text-sm text-gray-300 max-h-64 overflow-y-auto">
+        <!-- 로그 메시지가 여기에 추가됨 -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- 크롤링 이력 -->
+  <% if @crawling_history.any? %>
+    <section id="crawling-history" class="mt-4">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">크롤링 이력</h3>
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">시작 시간</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">종료 시간</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">소요 시간</th>
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">상태</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <% @crawling_history.each do |session| %>
+              <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <%= session.started_at.strftime("%Y-%m-%d %H:%M") %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <%= session.ended_at&.strftime("%Y-%m-%d %H:%M") || "-" %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                  <% if session.started_at && session.ended_at %>
+                    <%= distance_of_time_in_words(session.started_at, session.ended_at) %>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full <%= status_badge_color(session.status) %>">
+                    <%= status_text(session.status) %>
+                  </span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% end %>
+  
+  <!-- 초기화 확인 모달 -->
+  <div id="reset-modal" class="fixed inset-0 bg-gray-900/50 dark:bg-gray-900/80 z-50 hidden flex items-center justify-center">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 m-4 max-w-md w-full">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
+        <%= lucide_icon("alert-triangle", class: "w-6 h-6 text-yellow-500 mr-2") %>
+        초기화 확인
+      </h3>
+      
+      <div class="space-y-3 text-sm text-gray-600 dark:text-gray-300 mb-6">
+        <p class="font-medium">다음 항목들이 삭제됩니다:</p>
+        <ul class="list-disc list-inside space-y-1 ml-2">
+          <li>Step 1~4 크롤링 결과 파일</li>
+          <li>카테고리 및 제품 데이터</li>
+          <li>AI 처리 데이터</li>
+          <li>카탈로그 번호</li>
+          <li>데이터베이스 (lab-shop.db)</li>
+        </ul>
+        <p class="text-yellow-600 dark:text-yellow-400 font-medium flex items-center">
+          <%= lucide_icon("info", class: "w-4 h-4 mr-1") %>
+          백업 후 삭제되며, backup/products 폴더는 유지됩니다.
+        </p>
+      </div>
+      
+      <div class="flex gap-3 justify-end">
+        <button 
+          data-action="click->crawling-monitor#closeResetModal"
+          class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+          취소
+        </button>
+        <button 
+          data-action="click->crawling-monitor#confirmReset"
+          class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+          초기화 진행
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

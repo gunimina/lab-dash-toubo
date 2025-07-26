@@ -1,0 +1,11 @@
+<div class="<%= card_classes %>" id="<%= component_id %>">
+  <div class="flex items-center justify-between mb-2">
+    <p class="text-sm text-gray-500 dark:text-gray-400"><%= title %></p>
+    <div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+      <%= lucide_icon(icon, class: icon_classes) %>
+    </div>
+  </div>
+  <h3 class="<%= value_classes %>">
+    <%= value %>
+  </h3>
+</div>

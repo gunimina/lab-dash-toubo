@@ -1,0 +1,13 @@
+<button 
+  type="button"
+  class="<%= button_classes %>"
+  data-action="<%= stimulus_action.html_safe %>"
+  <% if action_url %>data-url="<%= action_url %>"<% end %>
+  <% if confirm %>data-confirm="<%= confirm %>"<% end %>
+  <%= 'disabled' if disabled? %>
+>
+  <% if icon %>
+    <%= lucide_icon(icon, class: "w-5 h-5 mr-2" ) %>
+  <% end %>
+  <%= text %>
+</button>

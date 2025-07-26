@@ -1,0 +1,32 @@
+<%= render Crawling::StatusCardComponent.new(
+  title: "크롤러 상태",
+  value: status_text(status[:status]),
+  icon: "bot",
+  status: status[:status]&.to_sym || :idle,
+  dom_id: "crawler-status"
+) %>
+
+<%= render Crawling::StatusCardComponent.new(
+  title: "현재 단계",
+  value: "#{status[:current_step] || 0}/4",
+  icon: "loader-2",
+  status: status[:status]&.to_sym || :idle,
+  dom_id: "current-step-card"
+) %>
+
+<%= render Crawling::StatusCardComponent.new(
+  title: "전체 진행률",
+  value: "#{status[:overall_progress] || 0}%",
+  icon: "percent",
+  status: status[:status]&.to_sym || :idle,
+  dom_id: "overall-progress-card"
+) %>
+
+<%= render Crawling::StatusCardComponent.new(
+  title: "예상 완료 시간",
+  value: estimated_time(status),
+  icon: "clock",
+  status: status[:status]&.to_sym || :idle,
+  dom_id: "estimated-time"
+) %>
+

@@ -1,0 +1,16 @@
+<div class="mt-4 p-4 bg-gray-100 rounded">
+  <h3 class="font-bold mb-2">디버그 테스트</h3>
+  
+  <form action="<%= admin_start_initial_crawling_path %>" method="post">
+    <%= csrf_meta_tags %>
+    <input type="hidden" name="authenticity_token" value="<%= form_authenticity_token %>">
+    <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded">
+      일반 폼 제출 테스트
+    </button>
+  </form>
+  
+  <div class="mt-4">
+    <%= button_to "button_to 테스트", admin_start_initial_crawling_path, 
+        class: "bg-purple-500 text-white px-4 py-2 rounded" %>
+  </div>
+</div>

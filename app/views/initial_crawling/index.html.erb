@@ -1,0 +1,838 @@
+<% content_for :page_title, "초기 크롤링" %>
+
+<!-- Progress Steps -->
+<%= render 'step_indicator', steps: [
+  {number: 1, name: "카테고리 및 제품 수집", status: 'waiting'},
+  {number: 2, name: "AI 데이터 처리", status: 'waiting'},
+  {number: 3, name: "카탈로그 번호 생성", status: 'waiting'},
+  {number: 4, name: "데이터베이스 저장", status: 'waiting'}
+] %>
+
+<!-- Status Overview -->
+<%= render 'status_cards', 
+  crawler_status: @status&.dig(:status) || '대기 중',
+  current_step: @current_step,
+  overall_progress: CrawlingProgress.overall_progress || 0,
+  estimated_time: @estimated_time || '-' %>
+
+<!-- Control Panel -->
+<%= card_container(size: :lg) do %>
+  <%= section_header('크롤링 제어') %>
+  
+  <div class="mt-6">
+    <!-- 서버 연결 상태 알림 -->
+    <div id="server-status-alert" class="hidden mb-4">
+      <%= alert_box(
+        '크롤러 서버에 연결할 수 없습니다. Node.js API 서버를 실행해주세요: cd /Users/macstudio/node/lab-shop-crawler && npm run api:dev',
+        type: :error,
+        dismissible: false
+      ) %>
+    </div>
+    
+    <div class="flex flex-wrap gap-3 mb-4" id="control-buttons">
+      <!-- 상태별 버튼 그룹 -->
+      
+      <!-- IDLE 상태 버튼들 -->
+      <div id="idle-buttons" class="flex gap-3">
+        <button id="start-btn" onclick="crawling.start()" class="<%= button_classes(:primary) %>">
+          <i class="ri-download-cloud-line mr-2"></i>
+          초기 크롤링 시작
+        </button>
+      </div>
+      
+      <!-- CHECKPOINT 상태 버튼들 (숨김) -->
+      <div id="checkpoint-buttons" class="hidden flex gap-3">
+        <button id="resume-crawling-btn" onclick="crawling.resumeFromCheckpoint()" class="<%= button_classes(:primary) %>">
+          <i class="ri-restart-line mr-2"></i>
+          <span id="resume-btn-text">크롤링 재개</span>
+        </button>
+        <button id="restart-btn" onclick="crawling.restartFromBeginning()" class="<%= button_classes(:warning) %>">
+          <i class="ri-refresh-line mr-2"></i>
+          처음부터 시작
+        </button>
+      </div>
+      
+      <!-- RUNNING 상태 버튼들 (숨김) -->
+      <div id="running-buttons" class="hidden flex gap-3">
+        <button id="pause-btn" onclick="crawling.pause()" class="<%= button_classes(:warning) %>">
+          <i class="ri-pause-line mr-2"></i>
+          일시정지
+        </button>
+        <button id="stop-btn" onclick="crawling.stop()" class="<%= button_classes(:danger) %>">
+          <i class="ri-stop-line mr-2"></i>
+          중지
+        </button>
+      </div>
+      
+      <!-- PAUSED 상태 버튼들 (숨김) -->
+      <div id="paused-buttons" class="hidden flex gap-3">
+        <button id="resume-btn" onclick="crawling.resume()" class="<%= button_classes(:primary) %>">
+          <i class="ri-play-line mr-2"></i>
+          재개
+        </button>
+        <button id="stop-btn-paused" onclick="crawling.stop()" class="<%= button_classes(:danger) %>">
+          <i class="ri-stop-line mr-2"></i>
+          중지
+        </button>
+      </div>
+      
+      <!-- COMPLETED/ERROR 상태 버튼 (항상 표시) -->
+      <button id="reset-btn" onclick="crawling.reset()" class="<%= button_classes(:secondary) %>">
+        <i class="ri-refresh-line mr-2"></i>
+        초기화
+      </button>
+    </div>
+    
+    <%= alert_box(
+      '초기 크롤링은 전체 제품 데이터를 수집하는 작업으로, 완료까지 약 4-5시간이 소요됩니다.',
+      type: :info,
+      dismissible: false
+    ) %>
+  </div>
+<% end %>
+
+
+
+<!-- File Status Modal -->
+<%= render 'shared/modal', 
+  id: 'file-status-modal',
+  title: '초기화 전 최종 확인',
+  subtitle: '아래의 모든 데이터가 영구적으로 삭제됩니다',
+  variant: :danger do %>
+  <div id="file-status-content">
+    <!-- 여기에 파일 상태가 동적으로 표시됩니다 -->
+  </div>
+<% end %>
+
+<script>
+// Utility functions
+const utils = {
+  async fetchJSON(url, options = {}) {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        ...options.headers
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  }
+};
+
+// Rails 경로를 JavaScript 변수로 설정
+window.railsRoutes = {
+  status: '<%= status_path %>',
+  start: '<%= start_path %>',
+  pause: '<%= pause_path %>',
+  resume: '<%= resume_path %>',
+  stop: '<%= stop_path %>',
+  reset: '<%= reset_path %>',
+  backup: '<%= backup_path %>',
+  checkFiles: '<%= check_files_path %>'
+};
+
+// Crawling Controller - 순수 JavaScript (No Turbo, No Stimulus)
+window.crawling = {
+  pollInterval: null,
+  startTime: null,
+  hasCheckpoint: false,
+  initialCheckComplete: false,
+  
+  async checkStatus() {
+    try {
+      const data = await utils.fetchJSON(window.railsRoutes.status);
+      this.updateUI(data);
+      
+      // 진행 중인 경우 진행률도 업데이트
+      if (data.currentStep && data.currentProgress !== undefined) {
+        this.updateProgress(data.currentStep, data.currentProgress, null);
+      }
+      
+      // 전체 진행률 업데이트
+      if (data.overallProgress !== undefined) {
+        document.getElementById('overall-progress').textContent = data.overallProgress;
+      }
+      
+      // 각 단계별 상태 업데이트
+      if (data.progresses && data.progresses.length > 0) {
+        data.progresses.forEach(progress => {
+          this.updateStepProgress(progress.step_number, progress.current_progress || 0);
+        });
+      }
+    } catch (error) {
+      console.error('Status check failed:', error);
+      this.updateCrawlerStatus('disconnected');
+    }
+  },
+  
+  updateUI(data) {
+    // Update status
+    this.updateCrawlerStatus(data.status);
+    
+    // 서버 연결 상태 확인
+    const isConnected = data.server_connected === true;
+    const isDisconnected = data.status === 'disconnected' || !isConnected;
+    
+    // 서버 연결 상태 알림 표시/숨김
+    const serverAlert = document.getElementById('server-status-alert');
+    if (isDisconnected) {
+      serverAlert.classList.remove('hidden');
+    } else {
+      serverAlert.classList.add('hidden');
+    }
+    
+    // 초기 진입 시에만 체크포인트 확인
+    if (!this.initialCheckComplete && data.progresses) {
+      this.initialCheckComplete = true;
+      
+      let checkpointInfo = null;
+      
+      // 완료되지 않은 단계가 있는지 확인
+      const incompleteStep = data.progresses.find(p => 
+        p.status === 'running' || p.status === 'paused' || p.status === 'stopped' || 
+        (p.current_progress > 0 && p.current_progress < 100)
+      );
+      
+      if (incompleteStep) {
+        this.hasCheckpoint = true;
+        checkpointInfo = incompleteStep;
+      } else {
+        // 완료된 단계가 있고 아직 4단계가 완료되지 않은 경우
+        const lastCompleted = data.progresses.filter(p => p.status === 'completed')
+          .sort((a, b) => b.step_number - a.step_number)[0];
+        
+        if (lastCompleted && lastCompleted.step_number < 4) {
+          this.hasCheckpoint = true;
+          checkpointInfo = {
+            step_number: lastCompleted.step_number + 1,
+            current_progress: 0,
+            message: `${lastCompleted.step_number}단계까지 완료됨`
+          };
+        }
+      }
+      
+      // 체크포인트가 있으면 버튼 설정
+      if (this.hasCheckpoint && checkpointInfo) {
+        // 재개 버튼 텍스트 설정
+        const resumeText = checkpointInfo.current_progress > 0 
+          ? `${checkpointInfo.step_number}단계 ${checkpointInfo.current_progress}%부터 재개`
+          : `${checkpointInfo.step_number}단계부터 재개`;
+        document.getElementById('resume-btn-text').textContent = resumeText;
+      }
+    }
+    
+    // Update buttons based on status AND connection
+    const isRunning = data.status === 'running';
+    const isPaused = data.status === 'paused';
+    const canStart = isConnected && (data.status === 'idle' || data.status === 'completed');
+    
+    // 모든 버튼 그룹 숨기기
+    document.getElementById('idle-buttons').classList.add('hidden');
+    document.getElementById('checkpoint-buttons').classList.add('hidden');
+    document.getElementById('running-buttons').classList.add('hidden');
+    document.getElementById('paused-buttons').classList.add('hidden');
+    
+    // 상태에 따라 적절한 버튼 그룹 표시
+    if (isRunning) {
+      // 실행 중: 일시정지, 중지 버튼
+      document.getElementById('running-buttons').classList.remove('hidden');
+    } else if (isPaused) {
+      // 일시정지: 재개, 중지 버튼
+      document.getElementById('paused-buttons').classList.remove('hidden');
+    } else if (this.hasCheckpoint && canStart) {
+      // 체크포인트 있음: 재개, 처음부터 버튼
+      document.getElementById('checkpoint-buttons').classList.remove('hidden');
+    } else if (canStart) {
+      // 시작 가능: 시작 버튼
+      document.getElementById('idle-buttons').classList.remove('hidden');
+    }
+    
+    // 초기화 버튼은 항상 표시, 상태에 따라 활성화/비활성화
+    document.getElementById('reset-btn').disabled = isRunning || isPaused || isDisconnected;
+    
+    // Start polling if running
+    if (isRunning) {
+      this.startPolling();
+    } else {
+      this.stopPolling();
+    }
+  },
+  
+  updateProgress(step, progress, message) {
+    // Update current step display
+    const stepNames = {
+      1: '카테고리 및 제품 수집',
+      2: 'AI 데이터 처리',
+      3: '카탈로그 번호 생성', 
+      4: '이미지 다운로드'
+    };
+    
+    document.getElementById('current-step').textContent = `${step}/4 - ${stepNames[step] || ''}`;
+    document.getElementById('current-step-progress').style.width = `${progress}%`;
+    document.getElementById('current-step-percent').textContent = `${progress}%`;
+    
+    // Update overall progress with weighted steps
+    const stepWeights = {
+      1: 60,  // Step 1: 0-60% (크롤링 - 15-20분)
+      2: 36,  // Step 2: 60-96% (AI 처리 - 신규 상품 개수에 따라 가변)
+      3: 2,   // Step 3: 96-98% (카탈로그 번호 - 1분 내외)
+      4: 2    // Step 4: 98-100% (DB 저장 - 1분 내외)
+    };
+    
+    let baseProgress = 0;
+    for (let i = 1; i < step; i++) {
+      baseProgress += stepWeights[i] || 0;
+    }
+    
+    const currentStepWeight = stepWeights[step] || 0;
+    const overallProgress = Math.round(baseProgress + (progress / 100 * currentStepWeight));
+    
+    // 전체 진행률 텍스트와 프로그레스 바 모두 업데이트
+    document.getElementById('overall-progress').textContent = overallProgress;
+    
+    // 전체 진행률 바가 있다면 업데이트
+    const overallProgressBar = document.querySelector('#overall-progress-bar');
+    if (overallProgressBar) {
+      overallProgressBar.style.width = overallProgress + '%';
+    }
+    
+    // Update step progress
+    this.updateStepProgress(step, progress);
+    
+    
+    // 4단계 100% 완료 시 전체 완료 처리
+    if (step === 4 && progress >= 100) {
+      document.getElementById('overall-progress').textContent = '100';
+      document.getElementById('overall-progress-bar').style.width = '100%';
+      document.getElementById('crawler-status').textContent = '완료';
+      document.getElementById('estimated-time').textContent = '완료됨';
+      this.updateCrawlerStatus('completed');
+      this.stopPolling();
+      
+      // 완료 알림
+      alert('초기 크롤링이 완료되었습니다!');
+    }
+    
+    // Update estimated time
+    if (this.startTime) {
+      const elapsedMinutes = Math.floor((Date.now() - this.startTime) / 60000);
+      
+      if (step === 1) {
+        // Step 1은 15-18분 예상
+        document.getElementById('estimated-time').textContent = '약 4-5시간';
+      } else if (step === 2) {
+        // Step 2 진행 중 - AI 처리는 가변적 (1개당 약 1분)
+        // 전체 부모상품 약 4,000개 기준
+        const totalProducts = 4000;
+        const processedProducts = Math.round(totalProducts * progress / 100);
+        const remainingProducts = totalProducts - processedProducts;
+        const remainingMinutes = remainingProducts; // 1개당 1분
+        
+        if (remainingMinutes > 120) {
+          const hours = Math.floor(remainingMinutes / 60);
+          const minutes = remainingMinutes % 60;
+          document.getElementById('estimated-time').textContent = `약 ${hours}시간 ${minutes}분`;
+        } else if (remainingMinutes > 60) {
+          const hours = Math.floor(remainingMinutes / 60);
+          const minutes = remainingMinutes % 60;
+          document.getElementById('estimated-time').textContent = `약 ${hours}시간 ${minutes}분`;
+        } else {
+          document.getElementById('estimated-time').textContent = `약 ${remainingMinutes}분`;
+        }
+      } else if (step === 3 || step === 4) {
+        // Step 3, 4는 금방 끝남
+        document.getElementById('estimated-time').textContent = '곧 완료';
+      }
+      
+      // 경과 시간도 함께 표시
+      if (elapsedMinutes > 0) {
+        const timeEl = document.getElementById('estimated-time');
+        const currentText = timeEl.textContent;
+        const elapsedHours = Math.floor(elapsedMinutes / 60);
+        const elapsedMins = elapsedMinutes % 60;
+        if (elapsedHours > 0) {
+          timeEl.title = `경과: ${elapsedHours}시간 ${elapsedMins}분`;
+        } else {
+          timeEl.title = `경과: ${elapsedMins}분`;
+        }
+      }
+    }
+  },
+  
+  updateStepProgress(step, progress) {
+    const stepEl = document.getElementById(`step-${step}`);
+    if (stepEl) {
+      const stepNumber = stepEl.querySelector('.step-number');
+      const stepStatus = stepEl.querySelector('.step-status');
+      
+      // 진행 상태에 따른 스타일 변경
+      if (progress >= 100) {
+        // 완료됨 - 은은한 초록색
+        stepEl.classList.remove('border-transparent');
+        stepEl.classList.add('bg-green-50/50', 'dark:bg-green-900/10', 'border-green-200/50', 'dark:border-green-800/30');
+        stepNumber.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+        stepNumber.classList.add('bg-green-500');
+        stepNumber.querySelector('span').classList.remove('text-gray-600', 'dark:text-gray-400');
+        stepNumber.querySelector('span').classList.add('text-white');
+        stepStatus.textContent = '완료';
+        stepStatus.classList.remove('text-gray-500');
+        stepStatus.classList.add('text-green-600', 'dark:text-green-400');
+      } else if (progress > 0) {
+        // 진행 중 - 은은한 파란색
+        stepEl.classList.remove('border-transparent');
+        stepEl.classList.add('bg-blue-50/50', 'dark:bg-blue-900/10', 'border-blue-200/50', 'dark:border-blue-800/30');
+        stepNumber.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+        stepNumber.classList.add('bg-blue-500');
+        stepNumber.querySelector('span').classList.remove('text-gray-600', 'dark:text-gray-400');
+        stepNumber.querySelector('span').classList.add('text-white');
+        stepStatus.textContent = '진행 중';
+        stepStatus.classList.remove('text-gray-500');
+        stepStatus.classList.add('text-blue-600', 'dark:text-blue-400');
+      }
+    }
+  },
+  
+  updateCrawlerStatus(status) {
+    const statusEl = document.getElementById('crawler-status');
+    if (!statusEl) {
+      console.warn('crawler-status element not found');
+      return;
+    }
+    
+    const statusTexts = {
+      'idle': '대기 중',
+      'running': '실행 중',
+      'paused': '일시정지',
+      'completed': '완료',
+      'failed': '실패',
+      'disconnected': '연결 끊김'
+    };
+    
+    statusEl.textContent = statusTexts[status] || '알 수 없음';
+    
+    // 상태에 따른 색상 변경
+    statusEl.className = statusEl.className.replace(/text-\w+-\d+/g, '');
+    
+    switch(status) {
+      case 'running':
+        statusEl.classList.add('text-green-600', 'dark:text-green-400');
+        break;
+      case 'paused':
+        statusEl.classList.add('text-yellow-600', 'dark:text-yellow-400');
+        break;
+      case 'completed':
+        statusEl.classList.add('text-blue-600', 'dark:text-blue-400');
+        break;
+      case 'failed':
+      case 'disconnected':
+        statusEl.classList.add('text-red-600', 'dark:text-red-400');
+        break;
+      default:
+        statusEl.classList.add('text-gray-900', 'dark:text-white');
+    }
+  },
+  
+  
+  startPolling() {
+    if (!this.pollInterval) {
+      this.pollInterval = setInterval(() => this.checkStatus(), 3000);
+    }
+  },
+  
+  stopPolling() {
+    if (this.pollInterval) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
+  },
+  
+  async start() {
+    try {
+      // 버튼 즉시 상태 변경
+      document.getElementById('start-btn').disabled = true;
+      this.updateCrawlerStatus('running');
+      document.getElementById('estimated-time').textContent = '계산 중...';
+      
+      const data = await utils.fetchJSON(window.railsRoutes.start, { method: 'POST' });
+      
+      if (data.success) {
+        this.startTime = Date.now();
+        this.addLogMessage('크롤링이 시작되었습니다.');
+        
+        if (data.resumedFrom && data.resumedFrom > 1) {
+          this.addLogMessage(`단계 ${data.resumedFrom}부터 재개합니다.`);
+        }
+        
+        this.startPolling();
+      } else {
+        alert(data.error || '크롤링 시작 실패');
+        this.updateCrawlerStatus('idle');
+        this.checkStatus();
+      }
+    } catch (error) {
+      console.error('Error in start:', error);
+      alert('크롤링 시작 중 오류 발생: ' + error.message);
+      this.updateCrawlerStatus('idle');
+      this.checkStatus();
+    }
+  },
+  
+  async pause() {
+    try {
+      const data = await utils.fetchJSON(window.railsRoutes.pause, { method: 'POST' });
+      if (data.success) {
+        this.addLogMessage('크롤링이 일시정지되었습니다.');
+        this.checkStatus();
+      }
+    } catch (error) {
+      alert('일시정지 중 오류 발생');
+    }
+  },
+  
+  async resume() {
+    try {
+      const data = await utils.fetchJSON(window.railsRoutes.resume, { method: 'POST' });
+      if (data.success) {
+        this.addLogMessage('크롤링이 재개되었습니다.');
+        this.startPolling();
+        this.checkStatus();
+      }
+    } catch (error) {
+      alert('재개 중 오류 발생');
+    }
+  },
+  
+  async stop() {
+    if (!confirm('진행 중인 크롤링을 중지하시겠습니까?')) return;
+    
+    try {
+      const data = await utils.fetchJSON(window.railsRoutes.stop, { method: 'POST' });
+      if (data.success) {
+        this.addLogMessage('크롤링이 중지되었습니다.');
+        this.stopPolling();
+        this.checkStatus();
+      }
+    } catch (error) {
+      alert('중지 중 오류 발생');
+    }
+  },
+  
+  async reset() {
+    try {
+      const fileStatus = await utils.fetchJSON(window.railsRoutes.checkFiles);
+      modal.showFileStatus(fileStatus);
+    } catch (error) {
+      alert('초기화 중 오류 발생: ' + error.message);
+    }
+  },
+  
+  async resumeFromCheckpoint() {
+    await this.start();
+  },
+  
+  async restartFromBeginning() {
+    if (!confirm('이전 진행 상황을 모두 삭제하고 처음부터 다시 시작하시겠습니까?')) {
+      return;
+    }
+    
+    try {
+      const resetData = await utils.fetchJSON(window.railsRoutes.reset, { method: 'POST' });
+      if (!resetData.success) {
+        alert('초기화에 실패했습니다.');
+        return;
+      }
+      
+      this.hasCheckpoint = false;
+      location.reload();
+    } catch (error) {
+      console.error('Error restarting:', error);
+      alert('다시 시작 중 오류가 발생했습니다.');
+    }
+  },
+  
+  addLogMessage(message) {
+    console.log('[Crawling]', message);
+    // 로그 메시지를 화면에 표시하려면 여기에 추가 구현
+  }
+};
+
+// Modal Controller
+window.modal = {
+  close() {
+    document.getElementById('file-status-modal').classList.add('hidden');
+  },
+  
+  showFileStatus(fileStatus) {
+    const content = document.getElementById('file-status-content');
+    
+    let html = '<div class="space-y-6">';
+    
+    // 세션 정보
+    if (fileStatus.last_session) {
+      html += '<div class="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-4 border border-yellow-200 dark:border-yellow-800">';
+      html += '<div class="flex items-center gap-3">';
+      html += '<i class="ri-time-line text-yellow-600 dark:text-yellow-400 text-xl"></i>';
+      html += '<div>';
+      html += '<p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">마지막 크롤링 세션</p>';
+      html += `<p class="text-sm text-yellow-700 dark:text-yellow-300">상태: ${fileStatus.last_session.status} | `;
+      if (fileStatus.last_session.started_at) {
+        const startTime = new Date(fileStatus.last_session.started_at).toLocaleString('ko-KR');
+        html += `시작: ${startTime}`;
+      }
+      if (fileStatus.last_session.ended_at) {
+        const endTime = new Date(fileStatus.last_session.ended_at).toLocaleString('ko-KR');
+        html += ` | 종료: ${endTime}`;
+      }
+      html += '</p></div></div></div>';
+    }
+    
+    // 단계별 상태
+    const stepNames = {
+      1: "카테고리 및 제품 수집",
+      2: "AI 데이터 처리",
+      3: "카탈로그 번호 생성",
+      4: "데이터베이스 저장"
+    };
+    
+    html += '<div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">';
+    html += '<h4 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-3">';
+    html += '<i class="ri-list-check text-blue-600 dark:text-blue-400 text-2xl"></i>';
+    html += '크롤링 단계별 상태</h4>';
+    html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+    
+    for (let stepNum = 1; stepNum <= 4; stepNum++) {
+      const step = fileStatus.steps[stepNum];
+      if (step) {
+        html += `<div class="bg-white dark:bg-gray-900 p-4 rounded-lg">`;
+        html += `<h5 class="font-semibold text-lg text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">`;
+        
+        if (step.completed) {
+          html += `<i class="ri-checkbox-circle-line text-green-500"></i>`;
+        } else {
+          html += `<i class="ri-close-circle-line text-red-500"></i>`;
+        }
+        
+        html += `${stepNum}단계: ${stepNames[stepNum]}</h5>`;
+        
+        // DB에 저장된 정보 표시
+        if (step.saved_status) {
+          html += '<div class="text-sm text-gray-600 dark:text-gray-400 mb-2">';
+          html += `<p>진행률: ${step.saved_status.current_progress || 0}%</p>`;
+          if (step.saved_status.output_files) {
+            html += `<p>생성 파일: ${step.saved_status.output_files}</p>`;
+          }
+          html += '</div>';
+        }
+        
+        // 파일 정보
+        if (step.files && step.files.length > 0) {
+          html += '<div class="space-y-2">';
+          step.files.forEach(file => {
+            html += `<div class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">`;
+            html += `<span class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">`;
+            html += `<i class="ri-file-text-line text-blue-500"></i>${file.name}`;
+            html += `</span>`;
+            html += `<span class="text-sm font-medium text-gray-600 dark:text-gray-400">${file.size}</span>`;
+            html += `</div>`;
+          });
+          html += '</div>';
+        } else if (stepNum === 4 && step.database) {
+          // 데이터베이스 정보
+          html += `<div class="grid grid-cols-2 gap-2">`;
+          html += `<div class="bg-gray-50 dark:bg-gray-800 p-2 rounded">`;
+          html += `<p class="text-xs text-gray-500 dark:text-gray-400">파일 크기</p>`;
+          html += `<p class="text-sm font-bold text-gray-900 dark:text-white">${step.database.size}</p>`;
+          html += `</div>`;
+          html += `<div class="bg-gray-50 dark:bg-gray-800 p-2 rounded">`;
+          html += `<p class="text-xs text-gray-500 dark:text-gray-400">레코드 수</p>`;
+          html += `<p class="text-sm font-bold text-gray-900 dark:text-white">${step.database.records}</p>`;
+          html += `</div>`;
+          html += `</div>`;
+        } else {
+          html += '<p class="text-sm text-gray-500 italic">파일 없음</p>';
+        }
+        
+        html += '</div>';
+      }
+    }
+    
+    html += '</div></div>';
+    
+    // 경고 메시지
+    html += '<div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-200 dark:border-red-800">';
+    html += '<div class="flex items-start gap-3">';
+    html += '<i class="ri-error-warning-line text-red-600 dark:text-red-400 text-xl"></i>';
+    html += '<div>';
+    html += '<p class="text-sm font-medium text-red-800 dark:text-red-200 mb-1">주의사항</p>';
+    html += '<p class="text-sm text-red-700 dark:text-red-300">초기화를 진행하면 위의 모든 데이터가 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</p>';
+    html += '</div></div></div>';
+    
+    html += '</div>';
+    
+    content.innerHTML = html;
+    document.getElementById('file-status-modal').classList.remove('hidden');
+  },
+  
+  async confirmReset() {
+    try {
+      this.close();
+      
+      // 백업 여부 확인
+      const backupChoice = await this.showBackupDialog();
+      
+      if (backupChoice === null) {
+        // 취소됨
+        return;
+      }
+      
+      // 백업 선택 시
+      if (backupChoice === true) {
+        console.log('백업을 진행하고 있습니다...');
+        const backupResult = await utils.fetchJSON(window.railsRoutes.backup, { method: 'POST' });
+        
+        if (!backupResult.success) {
+          alert('백업 실패: ' + (backupResult.error || '알 수 없는 오류'));
+          return;
+        }
+        
+        alert(`백업이 완료되었습니다.\n파일: ${backupResult.filename}`);
+      }
+      
+      // 초기화 진행
+      console.log('초기화를 진행하고 있습니다...');
+      const data = await utils.fetchJSON(window.railsRoutes.reset, { method: 'POST' });
+      
+      if (data.success) {
+        console.log('초기화가 완료되었습니다.');
+        alert('초기화가 완료되었습니다.');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        alert('초기화 실패: ' + (data.error || '알 수 없는 오류'));
+      }
+    } catch (error) {
+      alert('초기화 중 오류 발생: ' + error.message);
+    }
+  },
+  
+  showBackupDialog() {
+    return new Promise((resolve) => {
+      const dialog = document.createElement('div');
+      dialog.className = 'fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50';
+      dialog.innerHTML = `
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md">
+          <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            <i class="ri-question-line text-yellow-500"></i>
+            초기화 전 백업
+          </h3>
+          <p class="text-gray-700 dark:text-gray-300 mb-6">
+            초기화하면 모든 데이터가 삭제됩니다.<br>
+            백업을 먼저 진행하시겠습니까?
+          </p>
+          <div class="flex gap-3">
+            <button onclick="modal.backupDialogResponse(true)" class="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+              <i class="ri-save-line"></i>
+              백업 후 초기화
+            </button>
+            <button onclick="modal.backupDialogResponse(false)" class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors">
+              <i class="ri-delete-bin-line"></i>
+              바로 초기화
+            </button>
+            <button onclick="modal.backupDialogResponse(null)" class="px-4 py-3 bg-gray-500 hover:bg-gray-600 text-white rounded-lg font-medium transition-colors">
+              취소
+            </button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(dialog);
+      
+      modal.backupDialogResponse = (choice) => {
+        document.body.removeChild(dialog);
+        resolve(choice);
+      };
+    });
+  }
+};
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', async () => {
+  console.log('Initializing crawling page...');
+  
+  // 초기 상태: 모든 버튼 그룹 숨기고 idle 버튼만 표시
+  document.getElementById('checkpoint-buttons').classList.add('hidden');
+  document.getElementById('running-buttons').classList.add('hidden');
+  document.getElementById('paused-buttons').classList.add('hidden');
+  document.getElementById('idle-buttons').classList.remove('hidden');
+  
+  // 초기 서버 연결 상태 표시
+  <% if @server_connected %>
+    crawling.updateCrawlerStatus('<%= @status[:status] || "idle" %>');
+  <% else %>
+    crawling.updateCrawlerStatus('disconnected');
+    document.getElementById('crawler-status').textContent = '연결 끊김';
+  <% end %>
+  
+  // 페이지 로드 시 저장된 진행 상태 표시
+  <% if @progresses.any? %>
+    <% @progresses.each do |progress| %>
+      crawling.updateStepProgress(<%= progress.step_number %>, <%= progress.current_progress || 0 %>);
+    <% end %>
+  <% end %>
+  
+  // 완료 상태 확인
+  try {
+    const fileStatus = await utils.fetchJSON(window.railsRoutes.checkFiles);
+    if (fileStatus.completed) {
+      // 모든 단계가 완료된 상태
+      document.getElementById('crawler-status').textContent = '완료';
+      document.getElementById('overall-progress').textContent = '100';
+      document.getElementById('overall-progress-bar').style.width = '100%';
+      document.getElementById('estimated-time').textContent = '완료됨';
+      
+      // 완료 알림 표시
+      const completionAlert = document.createElement('div');
+      completionAlert.className = 'mb-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4';
+      completionAlert.innerHTML = `
+        <div class="flex items-start gap-3">
+          <i class="ri-checkbox-circle-line text-green-600 dark:text-green-400 text-xl mt-0.5"></i>
+          <div>
+            <p class="text-sm font-medium text-green-800 dark:text-green-200 mb-1">
+              초기 크롤링이 완료되었습니다!
+            </p>
+            <p class="text-sm text-green-700 dark:text-green-300">
+              모든 데이터가 성공적으로 수집되었습니다. 초기화하려면 초기화 버튼을 클릭하세요.
+            </p>
+          </div>
+        </div>
+      `;
+      document.querySelector('.bg-blue-50').parentNode.insertBefore(completionAlert, document.querySelector('.bg-blue-50'));
+    }
+  } catch (error) {
+    console.error('Failed to check file status:', error);
+  }
+  
+  // 서버 상태 확인 시작
+  crawling.checkStatus();
+});
+
+// 페이지 가시성 변경 감지
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    crawling.stopPolling();
+  } else {
+    crawling.checkStatus();
+  }
+});
+
+// 페이지 언로드 시 정리
+window.addEventListener('beforeunload', () => {
+  crawling.stopPolling();
+});
+</script>

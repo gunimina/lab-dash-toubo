@@ -1,0 +1,39 @@
+<%# 
+  로컬 변수:
+  - step: 크롤링 단계 객체 (name, status, progress, details 등)
+  - show_details: 세부 정보 표시 여부 (기본값: true)
+%>
+<%= card_container(size: :md, shadow: :md) do %>
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+      <%= step[:name] %>
+    </h3>
+    <%= status_badge(step[:status]) %>
+  </div>
+  
+  <% if step[:status] == 'running' && step[:progress] %>
+    <div class="mb-4">
+      <%= progress_bar(step[:progress], color: :primary) %>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        진행률: <%= step[:progress] %>%
+      </p>
+    </div>
+  <% end %>
+  
+  <% if show_details && step[:details].present? %>
+    <div class="space-y-2 text-sm">
+      <% step[:details].each do |key, value| %>
+        <div class="flex justify-between">
+          <span class="text-gray-600 dark:text-gray-400"><%= key.to_s.humanize %>:</span>
+          <span class="font-medium text-gray-900 dark:text-white"><%= value %></span>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+  
+  <% if step[:error].present? %>
+    <div class="mt-4">
+      <%= alert_box(step[:error], type: :error, dismissible: false) %>
+    </div>
+  <% end %>
+<% end %>

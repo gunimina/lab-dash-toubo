@@ -1,0 +1,11 @@
+<div class="<%= alert_classes(type) %> p-4 rounded-lg mb-4" data-controller="alert" data-alert-auto-dismiss-value="5000">
+  <div class="flex items-start">
+    <%= alert_icon(type) %>
+    <div class="flex-1">
+      <p class="text-sm"><%= message %></p>
+    </div>
+    <button data-action="click->alert#dismiss" class="ml-3 -mr-1 -mt-1">
+      <%= lucide_icon("x", class: "w-5 h-5") %>
+    </button>
+  </div>
+</div>
