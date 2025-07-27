@@ -57,9 +57,8 @@ class Crawling::StepIndicatorV2Component < ApplicationComponent
     
     sub_step_names = {
       1 => "카테고리 수집",
-      2 => "부모상품 수집", 
-      3 => "자식상품 수집",
-      4 => "상세정보 크롤링"
+      2 => "부모/자식상품 수집", 
+      3 => "iframe 스펙 크롤링"
     }
     
     sub_step_names[step[:sub_step]]

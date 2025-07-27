@@ -311,6 +311,14 @@ class Admin::InitialCrawlingController < ApplicationController
 
   def webhook
     Rails.logger.info "[Webhook] Received params: #{params.inspect}"
+    Rails.logger.info "[Webhook] Progress: #{params[:progress]}, Phase: #{params[:phase]}, Message: #{params[:message]}"
+    
+    # 로그 타입의 webhook은 무시 (의미없는 webhook 필터링)
+    if params[:type] == 'log' && params[:session_id].blank?
+      Rails.logger.info "[Webhook] Ignoring log-type webhook without session_id"
+      render json: { success: true, ignored: true }
+      return
+    end
     
     # 세션 찾기
     session_id = params[:session_id] || params[:sessionId]
@@ -369,6 +377,7 @@ class Admin::InitialCrawlingController < ApplicationController
     sub_step = params[:sub_step]
     if sub_step.present? && step == 1
       Rails.logger.info "[Webhook] Step 1 Sub-step update - sub_step: #{sub_step}, message: #{message}"
+      Rails.logger.info "[Webhook] Full params: #{params.inspect}"
     end
     
     # Step 4 완료 메시지 확인 (더 넓은 패턴 매칭)
@@ -487,10 +496,16 @@ class Admin::InitialCrawlingController < ApplicationController
       if progress.step_number == 1 && step[:status] == 'running'
         # 먼저 메시지로 감지 시도
         current_sub_step = detect_sub_step_from_message(progress.message)
+        Rails.logger.info "[BuildSteps] Step 1 - Message detection result: #{current_sub_step}"
+        
         # 메시지로 감지 못하면 진행률로 추정
-        current_sub_step ||= detect_sub_step_from_progress(progress)
+        if current_sub_step.nil?
+          current_sub_step = detect_sub_step_from_progress(progress)
+          Rails.logger.info "[BuildSteps] Step 1 - Progress detection result: #{current_sub_step}"
+        end
+        
         step[:sub_step] = current_sub_step
-        Rails.logger.info "[BuildSteps] Step 1 - Progress: #{progress.current_progress}%, Sub-step: #{current_sub_step}, Message: #{progress.message}"
+        Rails.logger.info "[BuildSteps] Step 1 - Final sub_step: #{current_sub_step}, Progress: #{progress.current_progress}%, Message: #{progress.message}"
       end
     end
     
@@ -534,14 +549,19 @@ class Admin::InitialCrawlingController < ApplicationController
     
     Rails.logger.info "[DetectSubStep] Checking message: #{message}"
     
-    sub_step = if message.match?(/카테고리|category|분류|=== 1단계/i)
+    # 내부X단계 형식을 먼저 체크
+    if message.match?(/내부(\d)단계/)
+      sub_step = message.match(/내부(\d)단계/)[1].to_i
+      Rails.logger.info "[DetectSubStep] Detected from 내부X단계 format: #{sub_step}"
+      return sub_step
+    end
+    
+    sub_step = if message.match?(/카테고리|category|분류/i)
       1
-    elsif message.match?(/부모상품 수집|부모|parent|상위.*제품/i)
+    elsif message.match?(/부모상품 수집|부모|parent|자식|child|PHASE 1|기본.*데이터.*수집/i)
       2
-    elsif message.match?(/자식|child|하위.*제품|PHASE 1|기본.*데이터.*수집/i)
-      3
     elsif message.match?(/iframe|스펙|spec|PHASE 2/i)
-      4
+      3
     else
       nil
     end
@@ -553,16 +573,14 @@ class Admin::InitialCrawlingController < ApplicationController
   def detect_sub_step_from_progress(progress)
     return nil unless progress
     
-    # 진행률 기반 추정 (4단계)
+    # 진행률 기반 추정 (3단계)
     current = progress.current_progress || 0
-    if current <= 25
+    if current <= 33
       1  # 카테고리 수집
-    elsif current <= 50
-      2  # 부모상품 수집
-    elsif current <= 75
-      3  # 자식상품 수집
+    elsif current <= 66
+      2  # 부모/자식상품 수집
     else
-      4  # iframe 스펙 크롤링
+      3  # iframe 스펙 크롤링
     end
   end
   
@@ -729,9 +747,10 @@ class Admin::InitialCrawlingController < ApplicationController
       step_number: step
     )
     
-    # sub_step이 전달된 경우 메시지에 포함
-    if sub_step.present?
-      message = "Step #{step} 내부#{sub_step}단계: #{message.split(': ').last}"
+    # sub_step이 전달된 경우 메시지에 명확하게 포함
+    if sub_step.present? && step == 1
+      message = "내부#{sub_step}단계: #{message.split(': ').last}"
+      Rails.logger.info "[UpdateProgress] Setting sub_step #{sub_step} in message"
     end
     
     crawling_progress.update!(
@@ -740,7 +759,7 @@ class Admin::InitialCrawlingController < ApplicationController
       status: progress >= 100 ? 'completed' : 'running'
     )
     
-    Rails.logger.info "[UpdateProgress] Step #{step}, Progress: #{progress}%, Message: #{message}"
+    Rails.logger.info "[UpdateProgress] Step #{step}, Progress: #{progress}%, Sub-step: #{sub_step}, Message: #{message}"
     
     # 이전 단계들을 모두 완료 처리
     if step > 1
@@ -807,12 +826,16 @@ class Admin::InitialCrawlingController < ApplicationController
     current_step = @status[:current_step] || 1
     
     Rails.logger.info "[Broadcast] Broadcasting to channel: crawling_session_#{@session.id}"
-    Rails.logger.info "[Broadcast] Current step data: #{steps.find { |s| s[:number] == 1 }&.inspect}"
-    Rails.logger.info "[Broadcast] Step 1 progress: #{steps.find { |s| s[:number] == 1 }&.dig(:progress)}%"
+    step1_data = steps.find { |s| s[:number] == 1 }
+    Rails.logger.info "[Broadcast] Current step 1 data: #{step1_data&.inspect}"
+    Rails.logger.info "[Broadcast] Step 1 progress: #{step1_data&.dig(:progress)}%"
+    Rails.logger.info "[Broadcast] Step 1 sub_step: #{step1_data&.dig(:sub_step)}"
+    Rails.logger.info "[Broadcast] Step 1 status: #{step1_data&.dig(:status)}"
     
     begin
       # 개별 브로드캐스트를 하나씩 로그로 확인
       Rails.logger.info "[Broadcast] Replacing step-indicator..."
+      
       Turbo::StreamsChannel.broadcast_replace_to(
         "crawling_session_#{@session.id}",
         target: "step-indicator",
