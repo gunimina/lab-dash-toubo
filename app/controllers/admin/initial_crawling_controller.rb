@@ -328,13 +328,26 @@ class Admin::InitialCrawlingController < ApplicationController
     if session_id.present?
       @session = CrawlingSession.find_by(id: session_id)
     else
-      # 실행 중인 세션 찾기
+      # 실행 중인 세션 찾기 (completed 상태도 포함)
       @session = CrawlingSession.where(status: ['running', 'paused', 'starting']).last
-      Rails.logger.info "[Webhook] No session ID provided, found running session: #{@session&.id}"
+      
+      # 완료 메시지인 경우 가장 최근 세션 찾기
+      if @session.nil? && params[:message]&.include?("모든 초기 설정이 완료되었습니다")
+        @session = CrawlingSession.order(created_at: :desc).first
+        Rails.logger.info "[Webhook] No running session, using most recent session for completion: #{@session&.id}"
+      end
+      
+      Rails.logger.info "[Webhook] No session ID provided, found session: #{@session&.id}"
     end
     
-    # 세션이 없으면 에러 반환
+    # 세션이 없으면 에러 반환 (완료 메시지가 아닌 경우만)
     unless @session
+      if params[:message]&.include?("모든 초기 설정이 완료되었습니다")
+        Rails.logger.warn "[Webhook] No session found for completion message, ignoring"
+        render json: { success: true, ignored: true }
+        return
+      end
+      
       Rails.logger.error "[Webhook] Session not found for ID: #{session_id}"
       Rails.logger.error "[Webhook] All params: #{params.to_unsafe_h}"
       render json: { error: 'Session not found', session_id: session_id }, status: :unprocessable_entity

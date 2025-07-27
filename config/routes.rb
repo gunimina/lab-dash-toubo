@@ -20,15 +20,6 @@ Rails.application.routes.draw do
       get ':id/status', to: 'initial_crawling#status', as: :initial_crawling_status
     end
     
-    # 동기 크롤링 라우트
-    get 'sync_crawling', to: 'sync_crawling#index', as: :sync_crawling_index
-    
-    scope 'sync_crawling' do
-      post 'start', to: 'sync_crawling#start', as: :start_sync_crawling
-      post 'stop', to: 'sync_crawling#stop', as: :stop_sync_crawling
-      post 'reset', to: 'sync_crawling#reset', as: :reset_sync_crawling
-      get 'refresh', to: 'sync_crawling#refresh', as: :refresh_sync_crawling
-    end
   end
 
   # Root redirect to admin

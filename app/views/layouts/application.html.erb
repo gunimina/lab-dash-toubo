@@ -39,14 +39,9 @@
           
           <!-- Navigation -->
           <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-            <%= link_to admin_initial_crawling_index_path, class: "flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors #{request.path.include?('/admin/initial_crawling') && !request.path.include?('/sync') ? 'bg-gray-100 dark:bg-gray-800 shadow-sm text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}" do %>
+            <%= link_to admin_initial_crawling_index_path, class: "flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors #{request.path.include?('/admin/initial_crawling') ? 'bg-gray-100 dark:bg-gray-800 shadow-sm text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}" do %>
               <%= lucide_icon("cloud-download", class: "w-5 h-5" ) %>
-              <span>초기 크롤링 (실시간)</span>
-            <% end %>
-            
-            <%= link_to admin_sync_crawling_index_path, class: "flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors #{request.path.include?('/admin/sync_crawling') ? 'bg-gray-100 dark:bg-gray-800 shadow-sm text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}" do %>
-              <%= lucide_icon("clock", class: "w-5 h-5" ) %>
-              <span>동기 크롤링</span>
+              <span>초기 크롤링</span>
             <% end %>
           </nav>
           

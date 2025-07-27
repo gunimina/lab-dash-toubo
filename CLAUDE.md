@@ -381,6 +381,14 @@ Turbo::StreamsChannel.broadcast_replace_to(
 
 상세한 업데이트 이력은 `업데이트.md` 파일을 참조하세요.
 
+### 2025-07-27 (오후)
+- **크롤링 완료 처리 개선**
+  - crawling_monitor_controller.js에 완료 감지 로직 추가
+  - 크롤링 완료 시 3초 후 자동으로 페이지 새로고침
+  - Node.js 크롤러에서 Step 5 (이미지 처리) 완전 제거
+  - Step 4 (DB 저장)가 최종 단계로 변경
+  - 크롤링 프로세스 완료 시 명시적 종료 추가
+
 ### 2025-07-27 (오전)
 - **Ajax Polling 완전 제거 및 Webhook 기반으로 전환**
   - crawling_status_controller.js의 모든 폴링 코드 제거

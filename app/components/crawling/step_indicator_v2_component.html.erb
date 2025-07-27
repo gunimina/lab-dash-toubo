@@ -20,48 +20,8 @@
         
         <!-- 상태 텍스트 -->
         <p class="text-xs text-gray-500 dark:text-gray-400 text-center" id="step-<%= step[:number] %>-status">
-          <% if step[:status].to_s == 'running' && sub_step_text(step) %>
-            <span class="font-semibold text-blue-600 dark:text-blue-400">
-              <%= sub_step_text(step) %>
-            </span>
-          <% else %>
-            <%= step_status_text(step) %>
-          <% end %>
+          <%= step_status_text(step) %>
         </p>
-        
-        <!-- Step 1의 내부 단계 표시 - 현재 진행중인 단계만 표시 -->
-        <% if step[:number] == 1 && step[:status].to_s == 'running' && step[:sub_steps] %>
-          <% 
-            # 현재 진행중인 내부 단계 확인
-            current_sub_step = nil
-            sub_names = {
-              1 => "카테고리",
-              2 => "부모/자식상품", 
-              3 => "iframe 스펙"
-            }
-            
-            # sub_step이 있으면 우선 사용, 없으면 진행률 기반으로 판단
-            if step[:sub_step] && step[:sub_step] > 0
-              current_sub_step = step[:sub_step]
-            elsif step[:progress]
-              current_sub_step = if step[:progress] <= 33
-                1  # 카테고리
-              elsif step[:progress] <= 66
-                2  # 부모/자식상품
-              else
-                3  # iframe 스펙
-              end
-            end
-          %>
-          
-          <% if current_sub_step && sub_names[current_sub_step] %>
-            <div class="text-xs mt-2">
-              <span class="text-blue-600 dark:text-blue-400 font-bold">
-                내부<%= current_sub_step %>단계: <%= sub_names[current_sub_step] %> (진행중)
-              </span>
-            </div>
-          <% end %>
-        <% end %>
         
       </div>
     <% end %>

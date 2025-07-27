@@ -51,16 +51,4 @@ class Crawling::StepIndicatorV2Component < ApplicationComponent
   def step_status_text(step)
     STATUS_TEXT[step[:status].to_s] || '대기'
   end
-
-  def sub_step_text(step)
-    return nil unless step[:sub_steps] && step[:sub_step]
-    
-    sub_step_names = {
-      1 => "카테고리 수집",
-      2 => "부모/자식상품 수집", 
-      3 => "iframe 스펙 크롤링"
-    }
-    
-    sub_step_names[step[:sub_step]]
-  end
 end

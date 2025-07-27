@@ -45,6 +45,24 @@ export default class extends Controller {
         buttons.forEach(btn => {
           console.log('Button after render:', btn.textContent.trim(), btn.dataset.action)
         })
+        
+        // 완료 상태 확인
+        const statusElement = document.querySelector('[data-crawling-status]')
+        if (statusElement) {
+          const status = statusElement.dataset.crawlingStatus
+          console.log('Current status after render:', status)
+          
+          // completed 상태이고 success 알림이 표시되면 3초 후 새로고침
+          if (status === 'completed') {
+            const successAlert = document.querySelector('.bg-green-50')
+            if (successAlert && successAlert.textContent.includes('크롤링이 완료되었습니다')) {
+              console.log('Crawling completed! Refreshing page in 3 seconds...')
+              setTimeout(() => {
+                window.location.reload()
+              }, 3000)
+            }
+          }
+        }
       }, 100)
       
       // stop 명령을 기다리고 있었다면 특별 처리
