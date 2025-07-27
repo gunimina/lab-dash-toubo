@@ -4,7 +4,8 @@
 <div class="container mx-auto" 
      data-controller="crawling-monitor" 
      data-crawling-monitor-session-id-value="<%= @session&.id %>"
-     data-crawling-monitor-status-url-value="<%= admin_initial_crawling_status_path(@session.id) if @session %>">
+     data-crawling-monitor-status-url-value="<%= admin_initial_crawling_status_path(@session.id) if @session %>"
+     data-current-session-id="<%= @session&.id || '' %>">
   
   <div class="max-w-7xl mx-auto p-4">
     <!-- 단계 표시기 - 독립적으로 업데이트 -->
@@ -39,6 +40,11 @@
       </div>
     </div>
   </div>
+  
+  <!-- Turbo Stream 구독 -->
+  <% if @session && ['running', 'paused'].include?(@session.status) %>
+    <%= turbo_stream_from "crawling_session_#{@session.id}" %>
+  <% end %>
   
   <!-- 크롤링 이력 -->
   <% if @crawling_history.any? %>
@@ -95,9 +101,11 @@
         <p class="font-medium">다음 항목들이 삭제됩니다:</p>
         <ul class="list-disc list-inside space-y-1 ml-2">
           <li>Step 1~4 크롤링 결과 파일</li>
-          <li>카테고리 및 제품 데이터</li>
+          <li>step1_source 폴더 (HTML 원본 파일)</li>
+          <li>iframe_specs.csv (상세 스펙 데이터)</li>
+          <li>카테고리 및 제품 데이터 CSV</li>
           <li>AI 처리 데이터</li>
-          <li>카탈로그 번호</li>
+          <li>카탈로그 번호 매핑</li>
           <li>데이터베이스 (lab-shop.db)</li>
         </ul>
         <p class="text-yellow-600 dark:text-yellow-400 font-medium flex items-center">

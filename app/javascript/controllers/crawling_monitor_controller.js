@@ -54,14 +54,14 @@ export default class extends Controller {
         return
       }
       
-      // 일반적인 렌더링 성공 확인
-      setTimeout(() => {
-        const currentPanel = document.getElementById('control-panel')
-        if (currentPanel && this.previousControlPanel === currentPanel.innerHTML) {
-          console.warn('Control panel not updated, forcing refresh')
-          Turbo.visit(window.location.href, { action: 'replace' })
-        }
-      }, 100)
+      // 일반적인 렌더링 성공 확인 (제거 - 불필요한 새로고침 방지)
+      // setTimeout(() => {
+      //   const currentPanel = document.getElementById('control-panel')
+      //   if (currentPanel && this.previousControlPanel === currentPanel.innerHTML) {
+      //     console.warn('Control panel not updated, forcing refresh')
+      //     Turbo.visit(window.location.href, { action: 'replace' })
+      //   }
+      // }, 100)
     }
     
     document.addEventListener('turbo:before-stream-render', this.handleBeforeStreamRender)
@@ -151,14 +151,14 @@ export default class extends Controller {
             Turbo.renderStreamMessage(html)
             console.log('Turbo Stream processed')
             
-            // UI 업데이트 확인
-            setTimeout(() => {
-              const statusEl = document.querySelector('[data-crawling-status]')
-              if (statusEl && statusEl.dataset.crawlingStatus !== 'running') {
-                console.warn('UI not updated after start, forcing reload...')
-                window.location.reload()
-              }
-            }, 500)
+            // UI 업데이트 확인 (Turbo Stream이 처리하므로 제거)
+            // setTimeout(() => {
+            //   const statusEl = document.querySelector('[data-crawling-status]')
+            //   if (statusEl && statusEl.dataset.crawlingStatus !== 'running') {
+            //     console.warn('UI not updated after start, forcing reload...')
+            //     window.location.reload()
+            //   }
+            // }, 500)
           } catch (error) {
             console.error('Error processing Turbo Stream:', error)
             window.location.reload()
@@ -201,13 +201,14 @@ export default class extends Controller {
           Turbo.renderStreamMessage(html)
           console.log('Turbo Stream processed for pause')
           
-          setTimeout(() => {
-            const statusEl = document.querySelector('[data-crawling-status]')
-            if (statusEl && statusEl.dataset.crawlingStatus !== 'paused') {
-              console.warn('UI not updated after pause, forcing reload...')
-              window.location.reload()
-            }
-          }, 500)
+          // Turbo Stream이 처리하므로 제거
+          // setTimeout(() => {
+          //   const statusEl = document.querySelector('[data-crawling-status]')
+          //   if (statusEl && statusEl.dataset.crawlingStatus !== 'paused') {
+          //     console.warn('UI not updated after pause, forcing reload...')
+          //     window.location.reload()
+          //   }
+          // }, 500)
         } catch (error) {
           console.error('Error processing Turbo Stream:', error)
           window.location.reload()
@@ -240,13 +241,14 @@ export default class extends Controller {
           Turbo.renderStreamMessage(html)
           console.log('Turbo Stream processed for resume')
           
-          setTimeout(() => {
-            const statusEl = document.querySelector('[data-crawling-status]')
-            if (statusEl && statusEl.dataset.crawlingStatus !== 'running') {
-              console.warn('UI not updated after resume, forcing reload...')
-              window.location.reload()
-            }
-          }, 500)
+          // Turbo Stream이 처리하므로 제거
+          // setTimeout(() => {
+          //   const statusEl = document.querySelector('[data-crawling-status]')
+          //   if (statusEl && statusEl.dataset.crawlingStatus !== 'running') {
+          //     console.warn('UI not updated after resume, forcing reload...')
+          //     window.location.reload()
+          //   }
+          // }, 500)
         } catch (error) {
           console.error('Error processing Turbo Stream:', error)
           window.location.reload()
@@ -423,8 +425,8 @@ export default class extends Controller {
       
       // 다음 폴링 예약
       if (this.pollingValue) {
-        console.log('[Polling] Scheduling next poll in 5 seconds')
-        this.pollTimeout = setTimeout(() => this.poll(), 5000)
+        console.log('[Polling] Scheduling next poll in 3 seconds')
+        this.pollTimeout = setTimeout(() => this.poll(), 3000)
       }
     } catch (error) {
       console.error('[Polling] Error:', error)
@@ -458,8 +460,8 @@ export default class extends Controller {
       if ((currentStatus === 'stopped' || currentStatus === 'idle') && startButton && !stopButton) {
         console.log('✓ Stop successfully updated UI')
       } else {
-        console.warn('✗ Stop UI update failed, applying fallback')
-        Turbo.visit(window.location.href, { action: 'replace' })
+        console.warn('✗ Stop UI update failed')
+        // Turbo.visit(window.location.href, { action: 'replace' })
       }
     }, 200)
   }

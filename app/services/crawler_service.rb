@@ -1,5 +1,6 @@
 require 'net/http'
 require 'json'
+require 'fileutils'
 
 class CrawlerService
   CRAWLER_API_URL = "http://localhost:3334"
@@ -124,7 +125,48 @@ class CrawlerService
     end
     
     def reset
-      http_post("#{CRAWLER_API_URL}#{API_ENDPOINTS[:reset]}")
+      # Node.js API 호출
+      result = http_post("#{CRAWLER_API_URL}#{API_ENDPOINTS[:reset]}")
+      
+      # 추가로 삭제해야 할 파일들 처리
+      if result[:success]
+        begin
+          # 크롤러 디렉토리 경로
+          crawler_base_path = '/Users/macstudio/node/lab-shop-crawler/results/initial-setup'
+          
+          # step1_source 폴더 삭제
+          step1_source_path = File.join(crawler_base_path, 'step1_source')
+          if File.directory?(step1_source_path)
+            FileUtils.rm_rf(step1_source_path)
+            Rails.logger.info "[CrawlerService] Deleted step1_source directory"
+          end
+          
+          # iframe_specs.csv 파일 삭제
+          iframe_specs_path = File.join(crawler_base_path, 'iframe_specs.csv')
+          if File.exist?(iframe_specs_path)
+            FileUtils.rm_f(iframe_specs_path)
+            Rails.logger.info "[CrawlerService] Deleted iframe_specs.csv file"
+          end
+          
+          # 기타 step 관련 파일들 삭제 (products와 backup 제외)
+          Dir.glob(File.join(crawler_base_path, 'step*')).each do |path|
+            unless path.include?('backup') || path.include?('products')
+              if File.directory?(path)
+                FileUtils.rm_rf(path)
+                Rails.logger.info "[CrawlerService] Deleted directory: #{path}"
+              elsif File.file?(path)
+                FileUtils.rm_f(path)
+                Rails.logger.info "[CrawlerService] Deleted file: #{path}"
+              end
+            end
+          end
+          
+        rescue => e
+          Rails.logger.error "[CrawlerService] Error during additional cleanup: #{e.message}"
+        end
+      end
+      
+      result
     end
     
     private

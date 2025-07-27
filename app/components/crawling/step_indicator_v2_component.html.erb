@@ -1,0 +1,72 @@
+<div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 mb-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <% steps.each do |step| %>
+      <div class="<%= step_container_classes(step) %>" id="step-<%= step[:number] %>">
+        <!-- 단계 번호 또는 체크 아이콘 -->
+        <div class="<%= step_number_classes(step) %>">
+          <% if step[:status].to_s == 'completed' %>
+            <%= lucide_icon("check", class: "w-6 h-6") %>
+          <% elsif step[:status].to_s == 'error' %>
+            <%= lucide_icon("x", class: "w-6 h-6") %>
+          <% else %>
+            <span><%= step[:number] %></span>
+          <% end %>
+        </div>
+        
+        <!-- 단계 이름 -->
+        <h3 class="text-sm font-medium text-gray-900 dark:text-white text-center mb-2">
+          <%= step[:name] %>
+        </h3>
+        
+        <!-- 상태 텍스트 -->
+        <p class="text-xs text-gray-500 dark:text-gray-400 text-center" id="step-<%= step[:number] %>-status">
+          <% if step[:status].to_s == 'running' && sub_step_text(step) %>
+            <span class="font-semibold text-blue-600 dark:text-blue-400">
+              <%= sub_step_text(step) %>
+            </span>
+          <% else %>
+            <%= step_status_text(step) %>
+          <% end %>
+        </p>
+        
+        <!-- Step 1의 내부 단계 표시 - 현재 진행중인 단계만 표시 -->
+        <% if step[:number] == 1 && step[:status].to_s == 'running' && step[:sub_steps] %>
+          <% 
+            # 현재 진행중인 내부 단계 확인
+            current_sub_step = nil
+            sub_names = {
+              1 => "카테고리",
+              2 => "부모상품", 
+              3 => "자식상품",
+              4 => "상세정보"
+            }
+            
+            # 진행률 기반으로 현재 단계 판단
+            if step[:sub_step]
+              current_sub_step = step[:sub_step]
+            elsif step[:progress]
+              current_sub_step = if step[:progress] <= 25
+                1  # 카테고리
+              elsif step[:progress] <= 50
+                2  # 부모상품
+              elsif step[:progress] <= 75
+                3  # 자식상품
+              else
+                4  # 상세정보
+              end
+            end
+          %>
+          
+          <% if current_sub_step && sub_names[current_sub_step] %>
+            <div class="text-xs mt-2">
+              <span class="text-blue-600 dark:text-blue-400 font-bold">
+                내부<%= current_sub_step %>단계: <%= sub_names[current_sub_step] %> (진행중)
+              </span>
+            </div>
+          <% end %>
+        <% end %>
+        
+      </div>
+    <% end %>
+  </div>
+</div>

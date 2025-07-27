@@ -89,7 +89,7 @@
       text: "초기화",
       action: :reset,
       icon: "rotate-cw",
-      variant: :secondary,
+      variant: reset_disabled ? :secondary : :danger,
       disabled: reset_disabled
     ) %>
   </div>

@@ -1,0 +1,20 @@
+<div data-crawling-status="<%= status %>" 
+     class="<%= color_classes[:bg] %> border <%= color_classes[:border] %> rounded-xl p-6 mb-4">
+  <div class="flex items-center space-x-4">
+    <!-- 아이콘 -->
+    <div class="flex-shrink-0">
+      <%= lucide_icon(status_config[:icon], 
+                      class: "w-8 h-8 #{color_classes[:icon]} #{animation_class}") %>
+    </div>
+    
+    <!-- 텍스트 -->
+    <div class="flex-1">
+      <h3 class="text-lg font-semibold <%= color_classes[:title] %>">
+        <%= status_config[:title] %>
+      </h3>
+      <p class="text-sm <%= color_classes[:description] %>">
+        <%= status_config[:description] %>
+      </p>
+    </div>
+  </div>
+</div>

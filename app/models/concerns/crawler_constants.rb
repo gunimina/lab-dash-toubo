@@ -21,12 +21,13 @@ module CrawlerConstants
     daily: 'daily'
   }.freeze
   
-  # 크롤링 단계 정의
+  # 크롤링 단계 정의 (실제 소요 시간 기준)
   CRAWLING_STEPS = {
     1 => {
       number: 1,
       name: '카테고리 및 제품 수집',
       key: 'category_product_collection',
+      weight: 85,  # 전체 작업의 85% (나머지가 2.5분 정도)
       sub_steps: {
         1 => '카테고리 목록 수집',
         2 => '부모상품 수집',
@@ -37,17 +38,20 @@ module CrawlerConstants
     2 => {
       number: 2,
       name: 'AI 데이터 처리',
-      key: 'ai_data_processing'
+      key: 'ai_data_processing',
+      weight: 10  # 전체 작업의 10% (평균 1-2분)
     },
     3 => {
       number: 3,
       name: '카탈로그 번호 생성',
-      key: 'catalog_generation'
+      key: 'catalog_generation',
+      weight: 2   # 전체 작업의 2% (30초)
     },
     4 => {
       number: 4,
       name: '데이터베이스 저장',
-      key: 'database_setup'
+      key: 'database_setup',
+      weight: 3   # 전체 작업의 3% (1분 이내)
     }
   }.freeze
   
@@ -133,6 +137,23 @@ module CrawlerConstants
     
     def all_step_names
       CRAWLING_STEPS.values.map { |step| step[:name] }
+    end
+    
+    # 전체 진행률 계산 (가중치 반영)
+    def calculate_overall_progress(step_number, step_progress)
+      return 0 if step_number.nil? || step_progress.nil?
+      
+      # 이전 단계들의 가중치 합계
+      previous_weight = (1...step_number).sum { |n| CRAWLING_STEPS.dig(n, :weight) || 0 }
+      
+      # 현재 단계의 가중치
+      current_weight = CRAWLING_STEPS.dig(step_number, :weight) || 0
+      
+      # 현재 단계의 진행률을 가중치에 반영
+      current_progress = (step_progress * current_weight / 100.0)
+      
+      # 전체 진행률
+      (previous_weight + current_progress).round
     end
   end
 end

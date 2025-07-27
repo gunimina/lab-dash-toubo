@@ -107,7 +107,8 @@ lab-dash-turbo/
 
 ### 실시간 업데이트 (Redis 없이)
 - **Turbo Streams**: `adapter: async` 사용 (메모리 기반)
-- **Ajax Polling**: 5초 간격으로 Node.js 상태 확인
+- **Webhook 기반**: Node.js가 상태 변경 시 즉시 Rails로 전송
+- **Ajax Polling**: 선택적 사용 (실시간 로그나 연결 상태 확인 시에만)
 - **ViewComponent**: UI 컴포넌트 캡슐화
 
 ## 🚀 주요 기능
@@ -379,6 +380,14 @@ Turbo::StreamsChannel.broadcast_replace_to(
 ## 📅 업데이트 이력
 
 상세한 업데이트 이력은 `업데이트.md` 파일을 참조하세요.
+
+### 2025-07-27 (오전)
+- **Ajax Polling 완전 제거 및 Webhook 기반으로 전환**
+  - crawling_status_controller.js의 모든 폴링 코드 제거
+  - status 액션을 더 이상 사용하지 않도록 변경
+  - 모든 상태 업데이트가 Webhook → DB → Turbo Stream으로 처리
+  - 서버 리소스 절약 및 더 나은 실시간성 확보
+  - 폴링이 필요한 경우: 실시간 로그, 연결 상태 확인 시에만
 
 ### 2025-07-27 (새벽)
 - **RemixIcon 완전 제거 및 버튼 기능 수정**
